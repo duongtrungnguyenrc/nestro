@@ -1,9 +1,10 @@
-import { Module, DynamicModule, NestModule, MiddlewareConsumer, RequestMethod, Provider } from "@nestjs/common";
+import { Module, DynamicModule, NestModule, MiddlewareConsumer, RequestMethod, Provider, Type } from "@nestjs/common";
 
+import { DiscoveryController, RegistryController } from "./controllers";
+import { DEFAULT_CLEANUP_TTL, HANDLEBARS_HELPERS } from "./constants";
 import { SecurityModule, SecurityMiddleware } from "../security";
+import { registerHandlebarsHelpers } from "./helpers";
 import type { NestroServerOptions } from "../types";
-import { RegistryController } from "./controllers";
-import { DEFAULT_CLEANUP_TTL } from "./constants";
 import { RegistryService } from "./services";
 
 @Module({})
@@ -19,6 +20,22 @@ export class RegistryModule implements NestModule {
       },
     };
 
+    const hbsHelperProvider: Provider = {
+      provide: HANDLEBARS_HELPERS,
+      useFactory: () => {
+        registerHandlebarsHelpers();
+        return {};
+      },
+    };
+
+    const controllers: Array<Type<any>> = [RegistryController];
+    const providers: Array<Provider> = [registryServiceProvider];
+
+    if (options?.enableServiceDiscovery ?? true) {
+      controllers.push(DiscoveryController);
+      providers.push(hbsHelperProvider);
+    }
+
     return {
       module: RegistryModule,
       imports: [
@@ -27,8 +44,8 @@ export class RegistryModule implements NestModule {
           initKeys: true,
         }),
       ],
-      controllers: [RegistryController],
-      providers: [registryServiceProvider],
+      providers,
+      controllers,
       exports: [RegistryService],
       global: true,
     };
@@ -37,7 +54,10 @@ export class RegistryModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(SecurityMiddleware)
-      .exclude({ path: "/nestro/services", method: RequestMethod.GET })
+      .exclude(
+        { path: "/nestro/services", method: RequestMethod.GET },
+        { path: "/nestro/discovery(.*)", method: RequestMethod.ALL }
+      )
       .forRoutes("/nestro/*");
   }
 }

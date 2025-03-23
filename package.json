@@ -1,7 +1,7 @@
 {
   "name": "@duongtrungnguyen/nestro",
   "author": "Duong Trung Nguyen",
-  "version": "0.0.39",
+  "version": "0.0.40",
   "description": "Service registry for Nest JS",
   "license": "MIT",
   "engines": {
@@ -44,10 +44,13 @@
   "peerDependencies": {
     "@nestjs/common": ">=10.0.0",
     "@nestjs/config": ">=3.0.0",
-    "@nestjs/core": ">=10.0.0"
+    "@nestjs/core": ">=10.0.0",
+    "@nestjs/platform-express": ">=11.0.0"
   },
   "dependencies": {
     "express": "^4.21.2",
+    "fs-extra": "^11.3.0",
+    "hbs": "^4.2.0",
     "http-proxy": "^1.18.1",
     "redis": "^4.7.0",
     "tslib": "^2.8.1",
@@ -55,6 +58,8 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
+    "@types/fs-extra": "^11.0.4",
+    "@types/hbs": "^4.0.4",
     "@types/http-proxy": "^1.17.16",
     "@types/node": "^20.10.5",
     "eslint": "^9.23.0",

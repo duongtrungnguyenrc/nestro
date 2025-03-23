@@ -9,8 +9,13 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@public/*": ["public/*"],
+      "@views/*": ["views/*"]
+    },
     "incremental": false,
     "skipLibCheck": true,
     "strictNullChecks": false,
@@ -19,6 +24,7 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
-  "exclude": ["node_modules", "**/*.spec.ts", "tests"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "views/**/*.hbs", "public/**/*"],
+  "exclude": ["node_modules", "**/*.spec.ts", "tests", "dist"]
 }
+

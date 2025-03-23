@@ -1,0 +1,25 @@
+<tr data-service-id="{{host}}:{{port}}">
+  <td>{{host}}</td>
+  <td>{{port}}</td>
+  <td>
+    {{#if (isExpiring expireAt)}}
+      <span class="badge badge-warning">Expiring Soon</span>
+    {{else}}
+      <span class="badge badge-success">Active</span>
+    {{/if}}
+  </td>
+  <td>{{formatDate timestamp}}</td>
+  <td>{{formatDate expireAt}}</td>
+  <td>{{requestCount}}</td>
+  <td>
+    <button 
+      class="btn btn-danger deregister-btn" 
+      data-name="{{name}}" 
+      data-host="{{host}}" 
+      data-port="{{port}}"
+    >
+      Deregister
+    </button>
+  </td>
+</tr>
+

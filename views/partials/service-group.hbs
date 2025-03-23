@@ -1,0 +1,25 @@
+<div class="service-group">
+  <div class="service-header">
+    <span>{{name}}</span>
+    <span class="service-count">{{services.length}} instance{{#if (notEquals services.length 1)}}s{{/if}}</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Host</th>
+        <th>Port</th>
+        <th>Status</th>
+        <th>Registered At</th>
+        <th>Expires At</th>
+        <th>Requests</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each services}}
+        {{> service-row}}
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+

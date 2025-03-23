@@ -10,6 +10,7 @@ export class RegistryService implements OnModuleInit, OnModuleDestroy {
   private memoryStore = new Map<string, Map<string, ServiceInstance>>();
   private roundRobinIndex = new Map<string, number>();
   private connectionCount = new Map<string, Map<string, number>>();
+  private requestCounts = new Map<string, Map<string, number>>();
   private cleanupInterval?: NodeJS.Timeout;
   private redisClient?: RedisClientType;
   private useRedis = false;
@@ -89,6 +90,22 @@ export class RegistryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async incrementRequestCount(serviceName: string, instanceId: string): Promise<void> {
+    if (this.useRedis && this.redisClient) {
+      const countKey = `${serviceName}:requests`;
+      await this.redisClient.hIncrBy(countKey, instanceId, 1);
+      debugLog("RegistryService", "Incremented request count in Redis", { serviceName, instanceId });
+    } else {
+      if (!this.requestCounts.has(serviceName)) {
+        this.requestCounts.set(serviceName, new Map());
+      }
+      const serviceRequests = this.requestCounts.get(serviceName)!;
+      const currentCount = serviceRequests.get(instanceId) || 0;
+      serviceRequests.set(instanceId, currentCount + 1);
+      debugLog("RegistryService", "Incremented request count in memory", { serviceName, instanceId, count: currentCount + 1 });
+    }
+  }
+
   async getService(serviceName: string, clientIp?: string): Promise<ServiceInstance | null> {
     const services = await this.getServices(serviceName);
     if (services.length === 0) {
@@ -96,38 +113,88 @@ export class RegistryService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
     const selected = this.selectService(serviceName, services, clientIp);
+    
+    const instanceId = this.getInstanceId(selected);
+    await this.incrementRequestCount(serviceName, instanceId);
+    
     debugLog("RegistryService", "Selected service", { serviceName, selected });
     return selected;
   }
 
   async getServices(serviceName?: string): Promise<ServiceInstance[]> {
+    let services: ServiceInstance[];
+    
     if (this.useRedis && this.redisClient) {
       if (serviceName) {
         const instances = await this.redisClient.hGetAll(serviceName);
-        const parsedInstances = Object.values(instances).map((instance) => JSON.parse(instance));
-        debugLog("RegistryService", "Fetched services from Redis", { serviceName, count: parsedInstances.length });
-        return parsedInstances;
+        services = Object.values(instances).map((instance) => JSON.parse(instance));
+        
+        const countKey = `${serviceName}:requests`;
+        const requestCounts = await this.redisClient.hGetAll(countKey);
+        
+        services = services.map(service => {
+          const instanceId = this.getInstanceId(service);
+          return {
+            ...service,
+            requestCount: parseInt(requestCounts[instanceId] || '0', 10)
+          };
+        });
+        
+        debugLog("RegistryService", "Fetched services from Redis", { serviceName, count: services.length });
       } else {
         const keys = await this.redisClient.keys("*");
-        const services = await Promise.all(
-          keys.map(async (key) => {
-            const instances = await this.redisClient.hGetAll(key);
-            return Object.values(instances).map((instance) => JSON.parse(instance));
-          })
-        );
-        const flatServices = services.flat();
-        debugLog("RegistryService", "Fetched all services from Redis", { count: flatServices.length });
-        return flatServices;
+        const serviceKeys = keys.filter(key => !key.includes(':requests'));
+        
+        const servicesPromises = serviceKeys.map(async (key) => {
+          const instances = await this.redisClient.hGetAll(key);
+          const countKey = `${key}:requests`;
+          const requestCounts = await this.redisClient.hGetAll(countKey);
+          
+          return Object.entries(instances).map(([instanceId, instanceStr]) => {
+            const instance = JSON.parse(instanceStr);
+            return {
+              ...instance,
+              requestCount: parseInt(requestCounts[instanceId] || '0', 10)
+            };
+          });
+        });
+        
+        services = (await Promise.all(servicesPromises)).flat();
+        debugLog("RegistryService", "Fetched all services from Redis", { count: services.length });
       }
     } else {
-      console.log(this.memoryStore);
-
-      const flatServices = serviceName
-        ? Array.from(this.memoryStore.get(serviceName)?.values() || [])
-        : Array.from(this.memoryStore.values()).flatMap((map) => Array.from(map.values()));
-      debugLog("RegistryService", "Fetched services from memory", { serviceName, count: flatServices.length });
-      return flatServices;
+      if (serviceName) {
+        const instances = Array.from(this.memoryStore.get(serviceName)?.values() || []);
+        const requestCountMap = this.requestCounts.get(serviceName) || new Map();
+        
+        services = instances.map(instance => {
+          const instanceId = this.getInstanceId(instance);
+          return {
+            ...instance,
+            requestCount: requestCountMap.get(instanceId) || 0
+          };
+        });
+      } else {
+        services = [];
+        for (const [serviceName, instances] of this.memoryStore.entries()) {
+          const requestCountMap = this.requestCounts.get(serviceName) || new Map();
+          
+          const serviceInstances = Array.from(instances.values()).map(instance => {
+            const instanceId = this.getInstanceId(instance);
+            return {
+              ...instance,
+              requestCount: requestCountMap.get(instanceId) || 0
+            };
+          });
+          
+          services.push(...serviceInstances);
+        }
+      }
+      
+      debugLog("RegistryService", "Fetched services from memory", { serviceName, count: services.length });
     }
+    
+    return services;
   }
 
   private cleanup() {

@@ -1,6 +1,8 @@
-import { defineConfig, Options } from "tsup";
+import { defineConfig, type Options } from "tsup";
+import { copy, remove, pathExists } from "fs-extra";
 
 import { name, version } from "./package.json";
+import * as path from "path";
 
 export const runAfterLast =
   (commands: Array<string | false>) =>
@@ -15,20 +17,53 @@ export const runAfterLast =
     ];
   };
 
+async function copyAssets() {
+  try {
+    const viewsDir = path.resolve(__dirname, "./views");
+    const publicDir = path.resolve(__dirname, "./public");
+    const distViewsDir = path.resolve(__dirname, "./dist/views");
+    const distPublicDir = path.resolve(__dirname, "./dist/public");
+
+    const viewsExists = await pathExists(viewsDir);
+    const publicExists = await pathExists(publicDir);
+
+    if (viewsExists) {
+      console.log("Copying views directory...");
+      await copy(viewsDir, distViewsDir);
+      console.log("Views directory copied successfully");
+    } else {
+      console.warn("Views directory not found");
+    }
+
+    if (publicExists) {
+      console.log("Copying public directory...");
+      await copy(publicDir, distPublicDir);
+      console.log("Public directory copied successfully");
+    } else {
+      console.warn("Public directory not found");
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 export default defineConfig((overrideOptions) => {
   const isProd = overrideOptions.env?.NODE_ENV === "production";
 
   const common: Options = {
-    entry: ["./src/**/*.{ts,js}", "./src/**/*.d.ts", "!./src/**/*.test.{ts,js}"],
+    entry: ["./src/**/*.{ts,js}", "!./src/**/*.test.{ts,js}"],
     clean: true,
-    minify: false,
-    sourcemap: true,
+    minify: isProd,
+    sourcemap: !isProd,
     legacyOutput: true,
     bundle: false,
     define: {
       PACKAGE_NAME: `"${name}"`,
       PACKAGE_VERSION: `"${version}"`,
       __DEV__: `${!isProd}`,
+    },
+    async onSuccess() {
+      await copyAssets();
     },
   };
 
