@@ -1,0 +1,1 @@
+export const PROXY_ROUTES_CONFIG = "PROXY_ROUTES";
