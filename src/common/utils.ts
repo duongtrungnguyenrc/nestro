@@ -6,8 +6,9 @@ export const debugLog = (context: string, message: string, data?: any) => {
   const logger = new Logger(context);
 
   const isDevelopment = process.env.NODE_ENV != "production";
+  const disableLog = process.env.NESTRO_LOG == "off";
 
-  if (isDevelopment) {
+  if (isDevelopment && !disableLog) {
     if (data) {
       logger.debug(`${message} - ${JSON.stringify(data)}`);
     } else {

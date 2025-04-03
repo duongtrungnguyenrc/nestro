@@ -1,4 +1,4 @@
-import { debugLog, type Service, type ServiceInstance } from "../../common";
+import { debugLog, type Service, type ServiceInstance } from "../../../common";
 import type { RegistryServiceOptions } from "../../types";
 import { IRegistryStorage } from "../interfaces";
 

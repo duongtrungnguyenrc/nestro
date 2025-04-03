@@ -2,7 +2,7 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { Module } from "@nestjs/common";
 
-import { debugLog, type NestroApplication } from "../../common";
+import { debugLog, type NestroApplication } from "../common";
 import type { NestroClientConfig } from "./types";
 import { ClientModule } from "./client.module";
 

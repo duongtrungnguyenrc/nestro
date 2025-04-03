@@ -1,9 +1,7 @@
 import { Module } from "@nestjs/common";
 
-import { GatewayModule } from "./gateway";
-
 @Module({
-  imports: [GatewayModule],
+  imports: [],
   controllers: [],
   providers: [],
 })
