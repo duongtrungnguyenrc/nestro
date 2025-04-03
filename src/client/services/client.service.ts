@@ -1,26 +1,27 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from "@nestjs/common";
+import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from "@nestjs/common";
 
-import { buildUrl, debugLog, normalizeJson } from "../../utils";
-import { ClientServiceOptions } from "../types";
-import { ServiceDto } from "../../global-types";
-import { KeyService } from "../../security";
+import type { ServerInfo, InstanceInfo } from "../types";
+import { INSTANCE_INFO, SERVER_INFO } from "../constants";
+import { buildUrl, debugLog, normalizeJson } from "src/common";
+import { KeyService } from "src/security";
 
 @Injectable()
 export class ClientService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(ClientService.name);
   private intervalId: NodeJS.Timeout;
-  private service: ServiceDto;
+  private serverBaseUrl: string;
 
-  constructor(private options: ClientServiceOptions, private readonly keyService: KeyService) {
-    this.service = {
-      ...this.options.client,
-    };
+  constructor(
+    @Inject(INSTANCE_INFO) private instanceInfo: InstanceInfo,
+    @Inject(SERVER_INFO) private readonly serverInfo: ServerInfo,
+    @Inject(KeyService) private readonly keyService: KeyService
+  ) {
+    this.serverBaseUrl = buildUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
   }
 
   async onModuleInit() {
     debugLog("ClientService", "Initializing ClientService...");
     await this.register();
-    this.intervalId = setInterval(() => this.sendHeartbeat(), this.options.heartbeatInterval);
+    this.intervalId = setInterval(() => this.sendHeartbeat(), this.instanceInfo.heartbeatInterval);
   }
 
   async onModuleDestroy() {
@@ -30,22 +31,19 @@ export class ClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   async register() {
-    debugLog("ClientService", "Registering service", this.service);
+    debugLog("ClientService", "Registering instanceInfo", this.instanceInfo);
 
-    const signature = this.keyService.signData(this.service);
+    const signature = this.keyService.signData(this.instanceInfo);
 
     try {
-      const response = await fetch(
-        `${buildUrl(this.options.nestro.host, this.options.nestro.protocol, this.options.nestro.port)}/nestro/register`,
-        {
-          method: "POST",
-          body: normalizeJson(this.service),
-          headers: {
-            "Content-Type": "application/json",
-            signature,
-          },
-        }
-      );
+      const response = await fetch(`${this.serverBaseUrl}/nestro/register`, {
+        method: "POST",
+        body: normalizeJson(this.instanceInfo),
+        headers: {
+          "Content-Type": "application/json",
+          signature,
+        },
+      });
 
       if (response.ok) {
         debugLog("ClientService", "Service registered successfully");
@@ -54,31 +52,24 @@ export class ClientService implements OnModuleInit, OnModuleDestroy {
 
       throw new Error(JSON.stringify(await response.json()));
     } catch (error) {
-      this.logger.error("Register error", error.message);
+      console.error("Register error", error.message);
     }
   }
 
   async sendHeartbeat() {
-    debugLog("ClientService", "Sending heartbeat", this.service);
+    debugLog("ClientService", "Sending heartbeat", this.instanceInfo);
 
-    const signature = this.keyService.signData(this.service);
+    const signature = this.keyService.signData(this.instanceInfo);
 
     try {
-      const response = await fetch(
-        `${buildUrl(
-          this.options.nestro.host,
-          this.options.nestro.protocol,
-          this.options.nestro.port
-        )}/nestro/heartbeat`,
-        {
-          method: "POST",
-          body: normalizeJson(this.service),
-          headers: {
-            "Content-Type": "application/json",
-            signature,
-          },
-        }
-      );
+      const response = await fetch(`${this.serverBaseUrl}/nestro/heartbeat`, {
+        method: "POST",
+        body: normalizeJson(this.instanceInfo),
+        headers: {
+          "Content-Type": "application/json",
+          signature,
+        },
+      });
 
       if (response.ok) {
         debugLog("ClientService", "Heartbeat sent successfully");
@@ -87,31 +78,24 @@ export class ClientService implements OnModuleInit, OnModuleDestroy {
 
       throw new Error(JSON.stringify(await response.json()));
     } catch (error) {
-      this.logger.error("Heartbeat error", error.message);
+      console.error("Heartbeat error", error.message);
     }
   }
 
   async deregister() {
-    debugLog("ClientService", "Deregistering service", this.service);
+    debugLog("ClientService", "Deregistering instanceInfo", this.instanceInfo);
 
-    const signature = this.keyService.signData(this.service);
+    const signature = this.keyService.signData(this.instanceInfo);
 
     try {
-      const response = await fetch(
-        `${buildUrl(
-          this.options.nestro.host,
-          this.options.nestro.protocol,
-          this.options.nestro.port
-        )}/nestro/deregister`,
-        {
-          method: "POST",
-          body: normalizeJson(this.service),
-          headers: {
-            "Content-Type": "application/json",
-            signature,
-          },
-        }
-      );
+      const response = await fetch(`${this.serverBaseUrl}/nestro/deregister`, {
+        method: "POST",
+        body: normalizeJson(this.instanceInfo),
+        headers: {
+          "Content-Type": "application/json",
+          signature,
+        },
+      });
       if (response.ok) {
         debugLog("ClientService", "Service deregistered successfully");
         return;
@@ -119,7 +103,7 @@ export class ClientService implements OnModuleInit, OnModuleDestroy {
 
       throw new Error(JSON.stringify(await response.json()));
     } catch (error) {
-      this.logger.error("Deregister error", error.message);
+      console.error("Deregister error", error.message);
     }
   }
 }

@@ -3,8 +3,8 @@ import { generateKeyPairSync, sign, verify, constants } from "crypto";
 import { Injectable } from "@nestjs/common";
 import { dirname } from "path";
 
-import { debugLog, normalizeJson } from "../../utils";
-import type { KeyServiceOptions } from "../types";
+import { debugLog, normalizeJson } from "src/common";
+import { type KeyServiceOptions } from "../types";
 
 @Injectable()
 export class KeyService {
@@ -62,7 +62,7 @@ export class KeyService {
       Buffer.from(normalizeJson(data)),
       {
         key: publicKey,
-        padding: require("crypto").constants.RSA_PKCS1_PSS_PADDING,
+        padding: constants.RSA_PKCS1_PSS_PADDING,
       },
       Buffer.from(signature, "base64")
     );

@@ -12,7 +12,6 @@
     "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
       "@public/*": ["public/*"],
       "@views/*": ["views/*"]
     },

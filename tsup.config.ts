@@ -1,21 +1,8 @@
 import { defineConfig, type Options } from "tsup";
-import { copy, remove, pathExists } from "fs-extra";
+import { copy, pathExists, remove } from "fs-extra";
 
 import { name, version } from "./package.json";
 import * as path from "path";
-
-export const runAfterLast =
-  (commands: Array<string | false>) =>
-  (...configs: Options[]) => {
-    const [last, ...rest] = configs.reverse();
-    return [
-      ...rest.reverse(),
-      {
-        ...last,
-        onSuccess: [last.onSuccess, ...commands].filter(Boolean).join(" && "),
-      },
-    ];
-  };
 
 async function copyAssets() {
   try {
@@ -47,6 +34,10 @@ async function copyAssets() {
   }
 }
 
+async function cleanUnused() {
+  await remove(path.resolve(__dirname, "./dist/types/index.js"));
+}
+
 export default defineConfig((overrideOptions) => {
   const isProd = overrideOptions.env?.NODE_ENV === "production";
 
@@ -57,13 +48,11 @@ export default defineConfig((overrideOptions) => {
     sourcemap: !isProd,
     legacyOutput: true,
     bundle: false,
+    splitting: false,
     define: {
       PACKAGE_NAME: `"${name}"`,
       PACKAGE_VERSION: `"${version}"`,
       __DEV__: `${!isProd}`,
-    },
-    async onSuccess() {
-      await copyAssets();
     },
   };
 
@@ -81,10 +70,12 @@ export default defineConfig((overrideOptions) => {
   const dts: Options = {
     entry: ["src/index.ts"],
     clean: false,
-    dts: {
-      resolve: true,
-    },
+    dts: true,
     outDir: "./dist/types",
+    async onSuccess() {
+      await copyAssets();
+      await cleanUnused();
+    },
   };
 
   return [esm, cjs, dts];

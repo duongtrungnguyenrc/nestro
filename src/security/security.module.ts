@@ -2,7 +2,7 @@ import { Module, DynamicModule, Provider } from "@nestjs/common";
 import * as path from "path";
 import os from "os";
 
-import { SecurityModuleOptions } from "./types";
+import type { SecurityModuleOptions } from "./types";
 import { KeyService } from "./services";
 
 @Module({})

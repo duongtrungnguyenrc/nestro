@@ -1,7 +1,7 @@
 {
   "name": "@duongtrungnguyen/nestro",
   "author": "Duong Trung Nguyen",
-  "version": "0.0.40",
+  "version": "0.0.42",
   "description": "Service registry for Nest JS",
   "license": "MIT",
   "engines": {
@@ -62,6 +62,8 @@
     "@types/hbs": "^4.0.4",
     "@types/http-proxy": "^1.17.16",
     "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
     "eslint": "^9.23.0",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3"
