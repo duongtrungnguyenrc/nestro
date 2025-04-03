@@ -38,7 +38,7 @@ h1 {
   color: var(--primary);
 }
 
-.service {
+.instance {
   background-color: var(--card);
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -46,7 +46,7 @@ h1 {
   overflow: hidden;
 }
 
-.service-header {
+.instance-header {
   background-color: var(--primary);
   color: white;
   padding: 1rem;
@@ -56,7 +56,7 @@ h1 {
   align-items: center;
 }
 
-.service-count {
+.instance-count {
   background-color: rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
   padding: 0.25rem 0.75rem;

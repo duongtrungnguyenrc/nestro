@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function loadServices() {
     loadingEl.classList.remove('hidden');
     
-    fetch('/nestro/discovery/api/services')
+    fetch('/nestro/dashboard/api/services')
       .then(response => response.json())
       .then(services => {
         window.location.reload();
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function deregisterService(name, host, port) {
     loadingEl.classList.remove('hidden');
     
-    fetch(`/nestro/discovery/api/services/${name}/${host}/${port}`, {
+    fetch(`/nestro/dashboard/api/services/${name}/${host}/${port}`, {
       method: 'DELETE',
     })
       .then(response => response.json())

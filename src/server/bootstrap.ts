@@ -1,8 +1,8 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { Module } from "@nestjs/common";
-import { registerPartials } from "hbs";
-import { join } from "path";
+import * as path from "path";
+import * as hbs from "hbs";
 
 import { debugLog, type NestroApplication } from "../common";
 import type { NestroServerConfig } from "./types";
@@ -23,11 +23,11 @@ export async function createNestroServer(AppModule: any, options?: NestroServerC
   const app = await NestFactory.create<NestExpressApplication>(wrappedModule);
 
   if (options.enableRegistryDashboard) {
-    app.useStaticAssets(join(__dirname, "..", "..", "resources", "static", "static"));
-    app.setBaseViewsDir(join(__dirname, "..", "..", "resources", "views", "pages"));
+    hbs.registerPartials(path.join(__dirname, "..", "..", "resources", "views", "partials"));
+    app.useStaticAssets(path.join(__dirname, "..", "..", "resources", "static"));
+    app.setBaseViewsDir(path.join(__dirname, "..", "..", "resources", "views"));
     app.setViewEngine("hbs");
-
-    registerPartials(join(__dirname, "..", "..", "resources", "views", "partials"));
+    app.set("view options", { layout: "layouts/main" });
   }
 
   return {

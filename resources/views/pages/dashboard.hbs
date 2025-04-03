@@ -1,1 +1,60 @@
-{{> service-list }}
+{{#> layouts/main}}
+    {{> header}}
+
+    <div id="services-container">
+    {{#if hasServices}}
+        {{#each services}}
+        <div class="instance">
+            <div class="instance-header">
+                <span>{{@key}}</span>
+                <span class="instance-count">{{this.length}} instance{{#if (notEquals this.length 1)}}s{{/if}}</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                    <th>Host</th>
+                    <th>Port</th>
+                    <th>Status</th>
+                    <th>Registered At</th>
+                    <th>Expires At</th>
+                    <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each this}}
+                    <tr data-service-id="{{host}}:{{port}}">
+                        <td>{{host}}</td>
+                        <td>{{port}}</td>
+                        <td>
+                        {{#if (isExpiring expireAt)}}
+                            <span class="badge badge-warning">Expiring Soon</span>
+                        {{else}}
+                            <span class="badge badge-success">Active</span>
+                        {{/if}}
+                        </td>
+                        <td>{{formatDate timestamp}}</td>
+                        <td>{{formatDate expireAt}}</td>
+                        <td>
+                        <button
+                            class="btn btn-danger deregister-btn"
+                            data-name="{{name}}"
+                            data-host="{{host}}"
+                            data-port="{{port}}"
+                        >
+                            Deregister
+                        </button>
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{/each}}
+    {{else}}
+        <div class="empty-state">No services registered</div>
+    {{/if}}
+    </div>
+
+    {{> loading}}
+{{/layouts/main}}

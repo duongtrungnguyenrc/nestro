@@ -1,5 +1,4 @@
-import { Controller, Get, Delete, Param, Res, Inject } from "@nestjs/common";
-import { Response } from "express";
+import { Controller, Get, Delete, Param, Inject, Render } from "@nestjs/common";
 
 import { RegistryService } from "../services";
 
@@ -8,13 +7,14 @@ export class DiscoveryController {
   constructor(@Inject(RegistryService) private readonly registryService: RegistryService) {}
 
   @Get()
-  async renderDiscoveryUI(@Res() res: Response) {
+  @Render("pages/dashboard")
+  async renderDiscoveryUI() {
     const services = await this.registryService.getServices();
 
-    return res.render("dashboard", {
+    return {
       services,
       hasServices: Object.keys(services).length > 0,
-    });
+    };
   }
 
   @Get("api/services")

@@ -20,26 +20,13 @@ _Built with the tools and technologies:_
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
+  - [Samples](#samples)
 
 ---
 
 ## Overview
 
 Nestro is a powerful service registry designed for NestJS applications. It streamlines the management and discovery of microservices by offering an HTTP-based pooling mechanism, real-time service monitoring, and a comprehensive dashboard for managing service dependencies. Nestro provides essential tools for efficient service registration and load balancing, tailored specifically for the NestJS ecosystem.
-
-**Why Nestro?**
-
-This project enhances microservice architecture by providing essential tools for seamless integration and communication. The core features include:
-
-- 🚀 **Service Registry:** Facilitates management and discovery of microservices, enhancing scalability and maintainability.
-
-- ⚖️ **Dynamic Load Balancing:** Implements various strategies for efficient request distribution, optimizing resource utilization.
-
-- 🔒 **Robust Security:** Integrates key management and request validation to ensure secure operations across the application.
-
-- 🛠️ **Modular Architecture:** Promotes reusability and organization, making it easier to manage and extend functionalities.
-
-- 📊 **User-Friendly Dashboard:** Provides a clear interface for monitoring and managing registered services in real-time.
 
 **Features**
 
@@ -172,7 +159,7 @@ bootstrap();
 For api gateway or communication between registered services. We using http proxy to handle proxy forwarding request to registered microservices.
 
 ```ts
-/* nestro-gateway/**/gateway.module.ts */
+/* nestro-gateway/gateway.module.ts */
 
 import { ProxyModule } from "@duongtrungnguyen/nestro";
 import { Module } from "@nestjs/common";
