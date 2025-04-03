@@ -1,0 +1,9 @@
+<div id="services-container">
+  {{#if hasServices}}
+    {{#each services}}
+      {{> service }}
+    {{/each}}
+  {{else}}
+    <div class="empty-state">No services registered</div>
+  {{/if}}
+</div>

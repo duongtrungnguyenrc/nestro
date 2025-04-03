@@ -9,11 +9,11 @@ export class DiscoveryController {
 
   @Get()
   async renderDiscoveryUI(@Res() res: Response) {
-    const serviceGroups = await this.registryService.getServices();
+    const services = await this.registryService.getServices();
 
     return res.render("dashboard", {
-      serviceGroups,
-      hasServices: Object.keys(serviceGroups).length > 0,
+      services,
+      hasServices: Object.keys(services).length > 0,
     });
   }
 

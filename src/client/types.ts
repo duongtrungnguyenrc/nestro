@@ -1,4 +1,4 @@
-import { SecurityModuleOptions } from "src/security";
+import { SecurityModuleOptions } from "../security";
 import type { LoadBalancingStrategy, InstanceConfig, ServiceInstance, InstanceOptions } from "../common/types";
 
 export type ClientLoadBalancingOptions = {

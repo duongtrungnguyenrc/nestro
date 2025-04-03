@@ -1,4 +1,4 @@
-import type { ServiceInstance } from "src/common";
+import type { ServiceInstance } from "../../common";
 
 export abstract class LoadBalancer {
   private failedInstances = new Map<string, number>();

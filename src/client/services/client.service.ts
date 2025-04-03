@@ -1,9 +1,9 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from "@nestjs/common";
 
+import { buildUrl, debugLog, normalizeJson } from "../../common";
 import type { ServerInfo, InstanceInfo } from "../types";
 import { INSTANCE_INFO, SERVER_INFO } from "../constants";
-import { buildUrl, debugLog, normalizeJson } from "src/common";
-import { KeyService } from "src/security";
+import { KeyService } from "../../security";
 
 @Injectable()
 export class ClientService implements OnModuleInit, OnModuleDestroy {

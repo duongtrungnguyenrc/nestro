@@ -1,12 +1,12 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { Module } from "@nestjs/common";
+import { registerPartials } from "hbs";
 import { join } from "path";
-import * as hbs from "hbs";
 
-import { ServerModule } from "./server.module";
-import { debugLog, type NestroApplication } from "src/common";
+import { debugLog, type NestroApplication } from "../common";
 import type { NestroServerConfig } from "./types";
+import { ServerModule } from "./server.module";
 
 function wrapModuleWithRegistryServer(AppModule: any, options?: NestroServerConfig): any {
   @Module({
@@ -23,11 +23,11 @@ export async function createNestroServer(AppModule: any, options?: NestroServerC
   const app = await NestFactory.create<NestExpressApplication>(wrappedModule);
 
   if (options.enableRegistryDashboard) {
-    app.useStaticAssets(join(__dirname, "..", "public"));
-    app.setBaseViewsDir(join(__dirname, "..", "views"));
+    app.useStaticAssets(join(__dirname, "..", "..", "resources", "static", "static"));
+    app.setBaseViewsDir(join(__dirname, "..", "..", "resources", "views", "pages"));
     app.setViewEngine("hbs");
 
-    hbs.registerPartials(join(__dirname, "..", "views/partials"));
+    registerPartials(join(__dirname, "..", "..", "resources", "views", "partials"));
   }
 
   return {

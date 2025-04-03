@@ -3,7 +3,7 @@ import { generateKeyPairSync, sign, verify, constants } from "crypto";
 import { Injectable } from "@nestjs/common";
 import { dirname } from "path";
 
-import { debugLog, normalizeJson } from "src/common";
+import { debugLog, normalizeJson } from "../../common";
 import { type KeyServiceOptions } from "../types";
 
 @Injectable()

@@ -2,8 +2,8 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from "@nestjs/commo
 
 import type { ClientLoadBalancingOptions, FailedInstanceInfo, LoadBalancingRetryOptions, ServerInfo } from "../types";
 import { CLIENT_LOADBALANCING_OPTION, INSTANCES, RETRY_OPTIONS, SERVER_INFO } from "../constants";
-import { LoadBalancer, LoadBalancerFactory } from "src/loadbalancer";
-import { debugLog, ServiceInstance } from "src/common";
+import { LoadBalancer, LoadBalancerFactory } from "../../loadbalancer";
+import { debugLog, ServiceInstance } from "../../common";
 
 @Injectable()
 export class ClientLoadBalancerService implements OnModuleInit, OnModuleDestroy {

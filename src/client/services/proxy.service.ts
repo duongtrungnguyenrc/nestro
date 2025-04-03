@@ -3,7 +3,7 @@ import { createProxyServer } from "http-proxy";
 import { Request, Response } from "express";
 
 import { ClientLoadBalancerService } from "./client-load-balancer.service";
-import { debugLog, ServiceInstance } from "src/common";
+import { debugLog, ServiceInstance } from "../../common";
 import { ProxyRouteConfig } from "../types";
 
 @Injectable()

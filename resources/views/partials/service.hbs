@@ -1,7 +1,7 @@
-<div class="service-group">
+<div class="service">
   <div class="service-header">
-    <span>{{name}}</span>
-    <span class="service-count">{{services.length}} instance{{#if (notEquals services.length 1)}}s{{/if}}</span>
+    <span>{{@key}}</span>
+    <span class="service-count">{{this.length}} instance{{#if (notEquals this.length 1)}}s{{/if}}</span>
   </div>
   <table>
     <thead>
@@ -11,15 +11,13 @@
         <th>Status</th>
         <th>Registered At</th>
         <th>Expires At</th>
-        <th>Requests</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody>
-      {{#each services}}
-        {{> service-row}}
+      {{#each this}}
+        {{> service-row }}
       {{/each}}
     </tbody>
   </table>
 </div>
-

@@ -1,6 +1,6 @@
 import { ClientLoadBalancerService } from "../services";
 import type { ExecuteRequestOptions } from "../types";
-import type { ServiceInstance } from "src/common";
+import type { ServiceInstance } from "../../common";
 
 export function CommunicateRequest(serviceName: string, options: ExecuteRequestOptions = {}) {
   return function (_: any, __: string, descriptor: PropertyDescriptor) {

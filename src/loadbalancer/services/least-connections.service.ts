@@ -1,4 +1,4 @@
-import type { ServiceInstance } from "src/common";
+import type { ServiceInstance } from "../../common";
 
 import { LoadBalancer } from "./base-load-balancer.service";
 

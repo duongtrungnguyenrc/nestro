@@ -1,4 +1,4 @@
-import { LoadBalancingStrategy } from "src/common";
+import { LoadBalancingStrategy } from "../common";
 
 /**
  * Server configuration options, extending registry options.

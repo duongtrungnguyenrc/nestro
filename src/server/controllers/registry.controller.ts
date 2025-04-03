@@ -1,7 +1,7 @@
 import { Controller, Post, Delete, Get, Body, Inject } from "@nestjs/common";
 
 import { RegistryService } from "../services";
-import { Service } from "src/common";
+import { Service } from "../../common";
 
 @Controller("nestro")
 export class RegistryController {

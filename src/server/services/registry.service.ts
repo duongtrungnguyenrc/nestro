@@ -1,7 +1,7 @@
 import { Injectable, type OnModuleInit, type OnModuleDestroy } from "@nestjs/common";
 
 import { IRegistryStorage, MemoryStorage } from "../storage";
-import type { Service, ServiceInstance } from "src/common";
+import type { Service, ServiceInstance } from "../../common";
 import { type RegistryServiceOptions } from "../types";
 
 @Injectable()

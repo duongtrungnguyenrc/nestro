@@ -6,28 +6,16 @@ import * as path from "path";
 
 async function copyAssets() {
   try {
-    const viewsDir = path.resolve(__dirname, "./views");
-    const publicDir = path.resolve(__dirname, "./public");
-    const distViewsDir = path.resolve(__dirname, "./dist/views");
-    const distPublicDir = path.resolve(__dirname, "./dist/public");
+    const resourcesDir: string = path.resolve(__dirname, "./resources");
 
-    const viewsExists = await pathExists(viewsDir);
-    const publicExists = await pathExists(publicDir);
+    const resourcesExists: boolean = await pathExists(resourcesDir);
 
-    if (viewsExists) {
-      console.log("Copying views directory...");
-      await copy(viewsDir, distViewsDir);
+    if (resourcesExists) {
+      console.log("Copying resources directory...");
+      await copy(resourcesDir, path.resolve(__dirname, "./dist/resources"));
       console.log("Views directory copied successfully");
     } else {
       console.warn("Views directory not found");
-    }
-
-    if (publicExists) {
-      console.log("Copying public directory...");
-      await copy(publicDir, distPublicDir);
-      console.log("Public directory copied successfully");
-    } else {
-      console.warn("Public directory not found");
     }
   } catch (error) {
     console.error(error);

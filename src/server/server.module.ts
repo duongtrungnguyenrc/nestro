@@ -2,7 +2,7 @@ import { Module, DynamicModule, NestModule, MiddlewareConsumer, RequestMethod, P
 
 import { DiscoveryController, RegistryController } from "./controllers";
 import { DEFAULT_CLEANUP_TTL, HANDLEBARS_HELPERS } from "./constants";
-import { SecurityMiddleware, SecurityModule } from "src/security";
+import { SecurityMiddleware, SecurityModule } from "../security";
 import { registerHandlebarsHelpers } from "./helpers";
 import { NestroServerConfig } from "./types";
 import { RegistryService } from "./services";
