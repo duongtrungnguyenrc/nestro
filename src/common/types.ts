@@ -6,14 +6,6 @@ import { Server } from "http";
  */
 export type HttpProtocols = "http" | "https";
 
-/**
- * Load balancing strategies.
- */
-export type LoadBalancingStrategy =
-  | "random" // Selects a random instance
-  | "round-robin" // Distributes requests sequentially
-  | "least-connections"; // Routes to the instance with the fewest active connections
-
 export type InstanceStatus = "ON" | "OFF";
 
 export type InstanceConfig = {
@@ -33,6 +25,7 @@ export type InstanceOptions = {
  */
 export type Service = InstanceOptions & {
   name: string; // Unique service name
+  metadata?: Record<string, any>;
 };
 
 /**
@@ -42,7 +35,6 @@ export type ServiceInstance = Service & {
   timestamp: number; // Registration timestamp
   status: InstanceStatus;
   expireAt?: number; // Optional expiration timestamp for service discovery
-  metadata?: Record<string, any>;
 };
 
 /**

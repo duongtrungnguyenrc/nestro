@@ -1,0 +1,62 @@
+import { Injectable } from "@nestjs/common";
+
+import { debugWarn, ServiceInstance } from "../common";
+
+@Injectable()
+export class TemporaryFailureTracker {
+  private failedInstances: Map<string, number> = new Map(); // instanceId -> timestamp when it failed
+  private readonly failureDuration: number = 30000; // How long to consider an instance as failed (30 seconds)
+
+  /**
+   * Mark an instance as temporarily failed
+   */
+  markAsFailed(instance: ServiceInstance): void {
+    const instanceId = this.getInstanceId(instance);
+    this.failedInstances.set(instanceId, Date.now() + 30000);
+    debugWarn(TemporaryFailureTracker.name, `Instance ${instanceId} marked as temporarily failed`);
+  }
+
+  /**
+   * Check if an instance is currently marked as failed
+   */
+  isMarkedAsFailed(instance: ServiceInstance): boolean {
+    const instanceId = this.getInstanceId(instance);
+    const failureTime = this.failedInstances.get(instanceId);
+
+    if (!failureTime) {
+      return false;
+    }
+
+    // Check if the failure duration has passed
+    const now = Date.now();
+
+    if (now >= this.failureDuration) {
+      // Failure duration has passed, remove from failed instances
+      this.failedInstances.delete(instanceId);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get all available (non-failed) instances
+   */
+  getAvailableInstances(instances: ServiceInstance[]): ServiceInstance[] {
+    return instances.filter((instance) => !this.isMarkedAsFailed(instance));
+  }
+
+  /**
+   * Reset all failed instances (e.g., after registry refresh)
+   */
+  resetAll(): void {
+    this.failedInstances.clear();
+  }
+
+  /**
+   * Get instance ID from ServiceInstance
+   */
+  private getInstanceId(instance: ServiceInstance): string {
+    return `${instance.name}:${instance.host}:${instance.port}`;
+  }
+}

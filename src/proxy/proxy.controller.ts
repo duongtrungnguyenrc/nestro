@@ -1,9 +1,9 @@
 import { Controller, All, Req, Res, Inject, CanActivate, ExecutionContext } from "@nestjs/common";
 import { Request, Response } from "express";
 
-import { PROXY_ROUTES_CONFIG } from "../constants";
-import type { ProxyRouteConfig } from "../types";
-import { ProxyService } from "../services";
+import { PROXY_ROUTES_CONFIG } from "../client/constants";
+import type { ProxyRouteConfig } from "./types";
+import { ProxyService } from "./proxy.service";
 
 @Controller()
 export class ProxyController {

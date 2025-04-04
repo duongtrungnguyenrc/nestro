@@ -9,20 +9,17 @@ export class RegistryController {
 
   @Post("register")
   async register(@Body() service: Service) {
-    await this.registryService.register(service);
-    return { message: "Registered" };
+    return await this.registryService.register(service);
   }
 
   @Delete("deregister")
   async deregister(@Body() service: Service) {
-    await this.registryService.deregister(service);
-    return { message: "Deregistered" };
+    return await this.registryService.deregister(service);
   }
 
   @Post("heartbeat")
   async heartbeat(@Body() service: Service) {
-    await this.registryService.heartbeat(service);
-    return { message: "Heartbeat received" };
+    return await this.registryService.heartbeat(service);
   }
 
   @Get("services")

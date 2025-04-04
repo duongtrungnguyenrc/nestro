@@ -1,8 +1,9 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from "@nestjs/common";
 
 import { buildUrl, debugLog, normalizeJson } from "../../common";
-import type { ServerInfo, InstanceInfo } from "../types";
 import { INSTANCE_INFO, SERVER_INFO } from "../constants";
+import type { ServerInfo, InstanceInfo } from "../types";
+import { RegisterResponse } from "../../server";
 import { KeyService } from "../../security";
 
 @Injectable()
@@ -19,9 +20,7 @@ export class ClientService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    debugLog("ClientService", "Initializing ClientService...");
     await this.register();
-    this.intervalId = setInterval(() => this.sendHeartbeat(), this.instanceInfo.heartbeatInterval);
   }
 
   async onModuleDestroy() {
@@ -46,7 +45,11 @@ export class ClientService implements OnModuleInit, OnModuleDestroy {
       });
 
       if (response.ok) {
+        const data: RegisterResponse = await response.json();
+
         debugLog("ClientService", "Service registered successfully");
+        this.intervalId = setInterval(() => this.sendHeartbeat(), data.heartbeatInterval);
+
         return;
       }
 

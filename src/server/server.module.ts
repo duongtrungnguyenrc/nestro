@@ -1,44 +1,25 @@
 import { Module, DynamicModule, NestModule, MiddlewareConsumer, RequestMethod, Provider, Type } from "@nestjs/common";
 
-import { DiscoveryController, RegistryController } from "./controllers";
-import { DEFAULT_CLEANUP_TTL, HANDLEBARS_HELPERS } from "./constants";
+import { DashboardController, RegistryController } from "./controllers";
 import { SecurityMiddleware, SecurityModule } from "../security";
-import { registerHandlebarsHelpers } from "./helpers";
 import { NestroServerConfig } from "./types";
 import { RegistryService } from "./services";
+import { StorageModule } from "../storage";
 
 @Module({})
 export class ServerModule implements NestModule {
   static register(config?: NestroServerConfig): DynamicModule {
-    const registryServiceProvider: Provider = {
-      provide: RegistryService,
-      useFactory: () => {
-        return new RegistryService({
-          cleanupTTL: config?.cleanupTTL ?? DEFAULT_CLEANUP_TTL,
-          strategy: config.strategy ?? "round-robin",
-        });
-      },
-    };
-
-    const hbsHelperProvider: Provider = {
-      provide: HANDLEBARS_HELPERS,
-      useFactory: () => {
-        registerHandlebarsHelpers();
-        return {};
-      },
-    };
-
     const controllers: Array<Type<any>> = [RegistryController];
-    const providers: Array<Provider> = [registryServiceProvider];
+    const providers: Array<Provider> = [RegistryService];
 
     if (config?.enableRegistryDashboard ?? true) {
-      controllers.push(DiscoveryController);
-      providers.push(hbsHelperProvider);
+      controllers.push(DashboardController);
     }
 
     return {
       module: ServerModule,
       imports: [
+        StorageModule.register(config.storage),
         SecurityModule.register({
           ...(config ?? {}),
           initKeys: true,

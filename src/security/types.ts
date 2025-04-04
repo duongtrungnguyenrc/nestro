@@ -10,4 +10,4 @@ export type KeyServiceOptions = {
 /**
  * Security module configuration, allowing partial key service options.
  */
-export type SecurityModuleOptions = Partial<KeyServiceOptions>;
+export type SecurityModuleConfigs = Partial<KeyServiceOptions>;

@@ -17,6 +17,21 @@ export const debugLog = (context: string, message: string, data?: any) => {
   }
 };
 
+export const debugWarn = (context: string, message: string, data?: any) => {
+  const logger = new Logger(context);
+
+  const isDevelopment = process.env.NODE_ENV != "production";
+  const disableLog = process.env.NESTRO_LOG == "off";
+
+  if (isDevelopment && !disableLog) {
+    if (data) {
+      logger.warn(`${message} - ${JSON.stringify(data)}`);
+    } else {
+      logger.warn(message);
+    }
+  }
+};
+
 export const normalizeJson = (data: object): string => {
   return JSON.stringify(data, Object.keys(data).sort(), 0);
 };

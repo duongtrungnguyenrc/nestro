@@ -1,23 +1,11 @@
-import { SecurityModuleOptions } from "../security";
-import type { LoadBalancingStrategy, InstanceConfig, ServiceInstance, InstanceOptions } from "../common/types";
-
-export type ClientLoadBalancingOptions = {
-  strategy?: LoadBalancingStrategy; // Load balancing strategy, default is round robin
-  refreshInterval?: number; // Instance refresh interval
-};
-
-export type LoadBalancingRetryOptions = {
-  maxRetryCount: number;
-  initialBackoffMs: number;
-  maxBackoffMs: number;
-  backoffMultiplier: number;
-  resetTimeoutMs: number;
-};
+import type { InstanceConfig, InstanceOptions } from "../common";
+import type { LoadBalancingConfigs } from "../loadbalancing";
+import type { SecurityModuleConfigs } from "../security";
 
 export type ServiceInstanceConfig = Pick<InstanceConfig, "port"> &
-  Partial<Omit<InstanceConfig, "port">> & { name: string; heartbeatInterval?: number };
+  Partial<Omit<InstanceConfig, "port">> & { name: string };
 
-export type InstanceInfo = InstanceOptions & { name: string; heartbeatInterval: number };
+export type InstanceInfo = InstanceOptions & { name: string };
 
 export type ServerConfig = Pick<InstanceConfig, "host"> & Partial<Omit<InstanceConfig, "host">>;
 
@@ -28,35 +16,13 @@ export type ServerInfo = InstanceOptions;
  */
 export type ClientServiceConfig = {
   server: ServerConfig; // Registry server configurationq
-  client: ServiceInstanceConfig;
+  client: ServiceInstanceConfig; // Instance configuration
 };
 
 /**
  * Application-level configuration options, including client settings and security.
  */
 export type NestroClientConfig = ClientServiceConfig & {
-  security?: SecurityModuleOptions; // Security module configuration
-  loadbalancing?: ClientLoadBalancingOptions;
-  retryOptions?: LoadBalancingRetryOptions;
-};
-
-export type ProxyRouteConfig = {
-  route: string;
-  target: string;
-  middlewares?: any[];
-  guards?: any[];
-  retryLimit?: number;
-  rewritePath?: (path: string) => string;
-};
-
-export type ExecuteRequestOptions = {
-  retryOnFailure?: boolean;
-  maxRetries?: number;
-};
-
-export type FailedInstanceInfo = {
-  instance: ServiceInstance;
-  failedAt: number;
-  retryCount: number;
-  nextRetryAt: number;
+  security?: SecurityModuleConfigs; // Security module configuration
+  loadbalancing?: LoadBalancingConfigs;
 };

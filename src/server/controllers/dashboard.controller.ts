@@ -3,12 +3,12 @@ import { Controller, Get, Delete, Param, Inject, Render } from "@nestjs/common";
 import { RegistryService } from "../services";
 
 @Controller("nestro/dashboard")
-export class DiscoveryController {
+export class DashboardController {
   constructor(@Inject(RegistryService) private readonly registryService: RegistryService) {}
 
   @Get()
   @Render("pages/dashboard")
-  async renderDiscoveryUI() {
+  async renderDashboardUI() {
     const services = await this.registryService.getServices();
 
     return {
@@ -37,7 +37,6 @@ export class DiscoveryController {
       protocol: "http", // Skip syntax check
     });
 
-    console.log(`Deregistered service: ${name} (${host}:${port})`);
     return { success: true };
   }
 }

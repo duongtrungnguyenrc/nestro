@@ -7,6 +7,7 @@ import * as hbs from "hbs";
 import { debugLog, type NestroApplication } from "../common";
 import type { NestroServerConfig } from "./types";
 import { ServerModule } from "./server.module";
+import { registerHandlebarsHelpers } from "./helpers";
 
 function wrapModuleWithRegistryServer(AppModule: any, options?: NestroServerConfig): any {
   @Module({
@@ -28,6 +29,8 @@ export async function createNestroServer(AppModule: any, options?: NestroServerC
     app.setBaseViewsDir(path.join(__dirname, "..", "..", "resources", "views"));
     app.setViewEngine("hbs");
     app.set("view options", { layout: "layouts/main" });
+
+    registerHandlebarsHelpers();
   }
 
   return {

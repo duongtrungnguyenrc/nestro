@@ -1,9 +1,9 @@
 import { DynamicModule, MiddlewareConsumer, Module, NestModule, Type } from "@nestjs/common";
 
-import { PROXY_ROUTES_CONFIG } from "./constants";
-import { ProxyController } from "./controllers";
-import { ProxyService } from "./services";
-import { ProxyRouteConfig } from "./types";
+import { PROXY_ROUTES_CONFIG } from "../client/constants";
+import { ProxyController } from "./proxy.controller";
+import type { ProxyRouteConfig } from "./types";
+import { ProxyService } from "./proxy.service";
 
 @Module({})
 export class ProxyModule implements NestModule {
