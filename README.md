@@ -102,15 +102,15 @@ Nestro needs an intermediary service to handle the service registry to avoid bot
 ```ts
 /* nestro-server/main.ts */
 
-import { createNestroServer } from '@duongtrungnguyen/nestro';
+import { createNestroServer } from "@duongtrungnguyen/nestro";
 
-import { AppModule } from './app.module';
+import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const app = await createNestroServer(AppModule, {
     security: {
-      publicKeyPath: '~/keys/public.pem',
-      privateKeyPath: '~/keys/private.pem',
+      publicKeyPath: "~/keys/public.pem",
+      privateKeyPath: "~/keys/private.pem",
     },
     enableRegistryDashboard: true,
   });
