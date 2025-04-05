@@ -4,10 +4,12 @@ import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const app = await createNestroServer(AppModule, {
-    publicKeyPath: "../../keys/public.pem", // Public generated secure key path
-    privateKeyPath: "../../keys/private.pem", // Private generated secure key path
-    enableRegistryDashboard: true, // Enable registry dashboard to monitor service instances
+    security: {
+      publicKeyPath: "~/keys/public.pem",
+      privateKeyPath: "~/keys/private.pem",
+    },
+    enableRegistryDashboard: true,
   });
-  await app.listen(3000);
+  await app.listen(4444);
 }
 bootstrap();

@@ -102,17 +102,19 @@ Nestro needs an intermediary service to handle the service registry to avoid bot
 ```ts
 /* nestro-server/main.ts */
 
-import { createNestroServer } from "@duongtrungnguyen/nestro";
+import { createNestroServer } from '@duongtrungnguyen/nestro';
 
-import { AppModule } from "./app.module";
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await createNestroServer(AppModule, {
-    publicKeyPath: "../../keys/public.pem", // Public generated secure key path
-    privateKeyPath: "../../keys/private.pem", // Private generated secure key path
-    enableRegistryDashboard: true, // Enable registry dashboard to monitor service instances
+    security: {
+      publicKeyPath: '~/keys/public.pem',
+      privateKeyPath: '~/keys/private.pem',
+    },
+    enableRegistryDashboard: true,
   });
-  await app.listen(3000);
+  await app.listen(4444);
 }
 bootstrap();
 ```
@@ -177,4 +179,29 @@ import { Module } from "@nestjs/common";
   ],
 })
 export class GatewayModule {}
+```
+
+For communication between multiple services. We using communication template to get best instance for communicate
+
+```ts
+import {
+  CommunicateRequest,
+  createCommunicationTemplate,
+  LoadBalancingService,
+  ServiceInstance,
+} from "@duongtrungnguyen/nestro";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
+export class UserService extends createCommunicationTemplate("user") {
+  constructor(loadBalancingService: LoadBalancingService /* Load balancing service is global dependency*/) {
+    // It is used to get the instance of the service
+    super(loadBalancingService);
+  }
+
+  @CommunicateRequest()
+  async getUser(instance: ServiceInstance) {
+    // do something with instance
+  }
+}
 ```
