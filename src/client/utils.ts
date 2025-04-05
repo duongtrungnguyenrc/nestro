@@ -1,9 +1,12 @@
 import { LoadBalancingService } from "../loadbalancing";
 
-export class CommunicationTemplate {
-  protected readonly service: LoadBalancingService;
+export const createCommunicationTemplate = (target: string) => {
+  return class CommunicationTemplate {
+    readonly service: LoadBalancingService;
+    readonly targetService: string = target;
 
-  constructor(service: LoadBalancingService) {
-    this.service = service;
-  }
-}
+    constructor(service: LoadBalancingService) {
+      this.service = service;
+    }
+  };
+};

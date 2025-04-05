@@ -1,7 +1,7 @@
 {
   "name": "@duongtrungnguyen/nestro",
   "author": "Duong Trung Nguyen",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "description": "Service registry for Nest JS",
   "license": "MIT",
   "engines": {
@@ -39,7 +39,9 @@
     "nest",
     "nestjs",
     "microservices",
-    "service registry"
+    "service registry",
+    "service discovery",
+    "load balancing"
   ],
   "peerDependencies": {
     "@nestjs/common": ">=10.0.0",
