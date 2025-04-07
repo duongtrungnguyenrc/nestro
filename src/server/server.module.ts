@@ -19,7 +19,7 @@ export class ServerModule implements NestModule {
     return {
       module: ServerModule,
       imports: [
-        StorageModule.register(config.storage),
+        StorageModule.register(config.storage ?? {}),
         SecurityModule.register({
           ...(config.security ?? {}),
           initKeys: true,
