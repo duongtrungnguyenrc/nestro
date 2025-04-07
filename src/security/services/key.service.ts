@@ -1,14 +1,15 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { generateKeyPairSync, sign, verify, constants } from "crypto";
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { dirname } from "path";
 
 import { debugLog, normalizeJson } from "../../common";
+import { KEY_SERVICE_OPTIONS } from "../constants";
 import { type KeyServiceOptions } from "../types";
 
 @Injectable()
 export class KeyService {
-  constructor(private readonly options: KeyServiceOptions) {
+  constructor(@Inject(KEY_SERVICE_OPTIONS) private readonly options: KeyServiceOptions) {
     if (options.initKeys) this.ensureKeyPair();
   }
 

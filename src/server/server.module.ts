@@ -21,7 +21,7 @@ export class ServerModule implements NestModule {
       imports: [
         StorageModule.register(config.storage),
         SecurityModule.register({
-          ...(config ?? {}),
+          ...(config.security ?? {}),
           initKeys: true,
         }),
       ],

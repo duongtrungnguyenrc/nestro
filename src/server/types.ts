@@ -7,7 +7,7 @@ import { StorageConfigs } from "../storage";
 export type NestroServerConfig = Partial<{
   security: SecurityModuleConfigs; // Security options for the server
   storage: StorageConfigs;
-  enableRegistryDashboard?: boolean; // Enables a web dashboard for service monitoring
+  enableRegistryDashboard: boolean; // Enables a web dashboard for service monitoring
 }>;
 
 export type RegisterResponse = {
