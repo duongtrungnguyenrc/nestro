@@ -10,3 +10,11 @@ export const createCommunicationTemplate = (target: string) => {
     }
   };
 };
+
+export class CommunicationTemplate {
+  readonly service: LoadBalancingService;
+
+  constructor(service: LoadBalancingService) {
+    this.service = service;
+  }
+}

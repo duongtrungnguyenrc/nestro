@@ -13,7 +13,7 @@ export class ProxyController {
   ) {}
 
   @All("*")
-  async handleRequest(@Req() req: Request, @Res() res: Response) {
+  handleRequest(@Req() req: Request, @Res() res: Response) {
     const routeConfig = this.findMatchingRoute(req.url);
 
     if (!routeConfig) {

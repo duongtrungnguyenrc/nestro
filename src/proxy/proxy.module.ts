@@ -1,4 +1,4 @@
-import { DynamicModule, MiddlewareConsumer, Module, NestModule, Type } from "@nestjs/common";
+import { DynamicModule, MiddlewareConsumer, Module, NestModule, Type, ValueProvider } from "@nestjs/common";
 
 import { PROXY_ROUTES_CONFIG } from "../client/constants";
 import { ProxyController } from "./proxy.controller";
@@ -45,10 +45,15 @@ export class ProxyModuleBuilder {
     ProxyModule.routes = this.routes;
     ProxyModule.globalMiddleware = this.middleware;
 
+    const routeConfigProvider: ValueProvider<ProxyRouteConfig[]> = {
+      provide: PROXY_ROUTES_CONFIG,
+      useValue: this.routes,
+    };
+    
     return {
       module: ProxyModule,
       controllers: [ProxyController],
-      providers: [ProxyService, { provide: PROXY_ROUTES_CONFIG, useValue: this.routes }],
+      providers: [routeConfigProvider, ProxyService],
       exports: [ProxyService],
     };
   }

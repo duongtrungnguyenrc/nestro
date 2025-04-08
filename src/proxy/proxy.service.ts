@@ -13,9 +13,8 @@ export class ProxyService {
   constructor(@Inject(LoadBalancingService) private readonly clientLoadBalancingService: LoadBalancingService) {}
 
   proxyRequest(req: Request, res: Response, routeConfig: ProxyRouteConfig) {
-    return this.clientLoadBalancingService.executeWithRetry(routeConfig.target, async (instance) => {
-      console.count("Proxying to instance: " + instance);
-      try {
+    try {
+      return this.clientLoadBalancingService.executeWithRetry(routeConfig.target, (instance) => {
         let targetPath: string = req.url;
         req.url = "";
 
@@ -23,16 +22,15 @@ export class ProxyService {
           targetPath = routeConfig.rewritePath(targetPath);
         }
 
-        const targetUrl = `${buildUrl(instance.host, instance.protocol, instance.port)}/${targetPath}`;
+        const targetUrl = `${buildUrl(instance.host, instance.protocol, instance.port)}${targetPath}`;
 
-        this.proxy.web(req, res, { target: targetUrl, changeOrigin: true }, async (err) => {
-          console.error(`Error forwarding to ${targetUrl}:`, err.message);
-
+        this.proxy.web(req, res, { target: targetUrl, changeOrigin: true }, (err) => {
           debugLog("Proxy", `Proxy failed with cause ${err}, Retrying...`);
+          throw err;
         });
-      } catch (error) {
-        throw error;
-      }
-    });
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Proxy error", details: error.message });
+    }
   }
 }
