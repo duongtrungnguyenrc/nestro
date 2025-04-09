@@ -1,6 +1,7 @@
-import { Controller, All, Req, Res, Inject, CanActivate, ExecutionContext, RawBodyRequest } from "@nestjs/common";
+import { Controller, All, Req, Res, Inject, CanActivate, ExecutionContext, RawBodyRequest, Type } from "@nestjs/common";
 import { version } from "@nestjs/core/package.json";
 import { Request, Response } from "express";
+import { match } from "path-to-regexp";
 
 import { PROXY_ROUTES_CONFIG } from "../client/constants";
 import type { ProxyRouteConfig } from "./types";
@@ -10,7 +11,7 @@ import { ProxyService } from "./proxy.service";
 export class ProxyController {
   constructor(
     @Inject(ProxyService) private readonly proxyService: ProxyService,
-    @Inject(PROXY_ROUTES_CONFIG) private readonly routes: ProxyRouteConfig[]
+    @Inject(PROXY_ROUTES_CONFIG) private readonly routesConfig: ProxyRouteConfig[]
   ) {}
 
   @All(version.startsWith("10") ? "*" : "*splat")
@@ -22,12 +23,7 @@ export class ProxyController {
     }
 
     if (routeConfig.guards?.length) {
-      const canActivateGuards = routeConfig.guards.every((guard) => {
-        const instance = new guard() as CanActivate;
-        return instance.canActivate({ switchToHttp: () => ({ getRequest: () => req }) } as ExecutionContext);
-      });
-
-      if (!canActivateGuards) {
+      if (!this.guardCheck(routeConfig.guards, req)) {
         return res.status(403).json({ error: "Forbidden" });
       }
     }
@@ -35,10 +31,22 @@ export class ProxyController {
     return this.proxyService.proxyRequest(req, res, routeConfig);
   }
 
-  private findMatchingRoute(url: string): ProxyRouteConfig | undefined {
-    return this.routes.find((route) => {
-      const pattern = new RegExp(`^${route.route.replace(/\*/g, ".*")}$`);
-      return pattern.test(url);
+  private guardCheck(guards: Array<Type<CanActivate>>, request: Request) {
+    return guards.every((guard) => {
+      const instance = new guard();
+
+      return instance.canActivate({ switchToHttp: () => ({ getRequest: () => request }) } as ExecutionContext);
     });
+  }
+
+  private findMatchingRoute(url: string): ProxyRouteConfig | undefined {
+    for (const routeConfig of this.routesConfig) {
+      const matcher = match(routeConfig.route, { decode: decodeURIComponent });
+      if (matcher(url)) {
+        return routeConfig;
+      }
+    }
+
+    return undefined;
   }
 }

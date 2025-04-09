@@ -7,7 +7,7 @@ import { URL } from "url";
 
 import { ProxyLogger, hasEncryptedConnection, rewriteCookieProperty, setupOutgoing, setupSocket } from "./utils";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "./types";
-import { buildUrl, debugError, debugLog } from "../common";
+import { buildUrl, debugError, debugLog, debugWarn } from "../common";
 import { LoadBalancingService } from "../loadbalancing";
 
 @Injectable()
@@ -46,12 +46,10 @@ export class ProxyService {
 
         return new Promise<void>((resolve) => {
           res.on("close", () => {
-            debugLog(ProxyService.name, "Response closed");
             resolve();
           });
 
           res.on("finish", () => {
-            debugLog(ProxyService.name, "Response finished");
             resolve();
           });
         });
@@ -183,7 +181,7 @@ export class ProxyService {
     }
 
     // Stream the request to the target
-    this.streamRequest(req, res, options, callbacks, logger);
+    this.streamRequest(req, res, options, callbacks);
   }
 
   /**
@@ -193,8 +191,7 @@ export class ProxyService {
     req: IncomingMessage,
     res: ServerResponse,
     options: ProxyOptions,
-    callbacks: ProxyCallbacks,
-    logger: ProxyLogger
+    callbacks: ProxyCallbacks
   ): void {
     // Call onStart callback
     if (callbacks.onStart) {
@@ -232,18 +229,18 @@ export class ProxyService {
 
     // Add explicit timeout handler
     proxyReq.on("timeout", () => {
-      logger.warn("Proxy request timeout");
+      debugWarn(ProxyService.name, "Proxy request timeout");
       proxyReq.destroy(new Error("Timeout"));
     });
 
     // Abort proxy if request is aborted
     req.on("aborted", () => {
-      logger.info("Client request aborted");
+      debugLog(ProxyService.name, "Client request aborted");
       proxyReq.destroy();
     });
 
     // Handle errors
-    const proxyError = this.createErrorHandler(proxyReq, options.target, req, res, logger, callbacks.onError);
+    const proxyError = this.createErrorHandler(proxyReq, options.target, req, res, callbacks.onError);
     req.on("error", proxyError);
     proxyReq.on("error", proxyError);
 
@@ -252,8 +249,6 @@ export class ProxyService {
       if (callbacks.onProxyRes) {
         callbacks.onProxyRes(proxyRes, req, res);
       }
-
-      logger.debug(`Proxy response received: ${proxyRes.statusCode}`);
 
       // Set status code and headers
       res.statusCode = proxyRes.statusCode || 500;
@@ -270,7 +265,7 @@ export class ProxyService {
             try {
               res.setHeader(key, header);
             } catch (err) {
-              logger.warn(`Error setting header ${key}:`, err);
+              debugWarn(ProxyService.name, `Error setting header ${key}:` + err);
             }
           }
         }
@@ -309,12 +304,12 @@ export class ProxyService {
         if (callbacks.onEnd) {
           callbacks.onEnd(req, res, proxyRes);
         }
-        logger.debug("Proxy response completed");
+        debugLog(ProxyService.name, "Proxy completed - " + proxyRes.statusCode);
       });
 
       // Handle errors on the proxy response
       proxyRes.on("error", (err) => {
-        logger.error("Proxy response error:", err);
+        console.error("Proxy response error:", err);
         if (!res.headersSent) {
           res.writeHead(502, { "Content-Type": "text/plain" });
           res.end("Proxy Error: " + err.message);
@@ -449,7 +444,7 @@ export class ProxyService {
 
     // Create error handler function
     const onOutgoingError = (err: Error) => {
-      logger.error("WebSocket proxy error:", err);
+      console.error("WebSocket proxy error:", err);
       this.handleError(err, req, socket, undefined, callbacks.onError);
       socket.end();
     };
@@ -461,7 +456,7 @@ export class ProxyService {
     proxyReq.on("response", (proxyRes: IncomingMessage) => {
       // If not upgrading, write the response and pipe it to the socket
       if (!proxyRes["upgrade"]) {
-        logger.warn("WebSocket upgrade failed, falling back to HTTP");
+        debugWarn(ProxyService.name, "WebSocket upgrade failed, falling back to HTTP");
         const header = createHttpHeader(
           `HTTP/${proxyRes.httpVersion} ${proxyRes.statusCode} ${proxyRes.statusMessage || ""}`,
           proxyRes.headers
@@ -521,18 +516,17 @@ export class ProxyService {
     target: string | URL | ProxyTarget | undefined,
     req: IncomingMessage,
     res: ServerResponse | Socket,
-    logger: ProxyLogger,
     onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void
   ): (err: Error) => void {
     return (err: Error): void => {
       // Handle ECONNRESET specially
       if ((req.socket as Socket).destroyed && err.message.includes("ECONNRESET")) {
-        logger.warn("Connection reset by peer:", err.message);
+        debugWarn(ProxyService.name, "Connection reset by peer:", err.message);
         return proxyReq.destroy();
       }
 
       // Log error
-      logger.error("Proxy error:", err);
+      console.error("Proxy error:", err);
 
       // Call error handler
       this.handleError(err, req, res, target, onError);
