@@ -1,4 +1,5 @@
-import { Controller, All, Req, Res, Inject, CanActivate, ExecutionContext } from "@nestjs/common";
+import { Controller, All, Req, Res, Inject, CanActivate, ExecutionContext, RawBodyRequest } from "@nestjs/common";
+import { version } from "@nestjs/core/package.json";
 import { Request, Response } from "express";
 
 import { PROXY_ROUTES_CONFIG } from "../client/constants";
@@ -12,8 +13,8 @@ export class ProxyController {
     @Inject(PROXY_ROUTES_CONFIG) private readonly routes: ProxyRouteConfig[]
   ) {}
 
-  @All("*")
-  handleRequest(@Req() req: Request, @Res() res: Response) {
+  @All(version.startsWith("10") ? "*" : "*splat")
+  handleRequest(@Req() req: RawBodyRequest<Request>, @Res() res: Response) {
     const routeConfig = this.findMatchingRoute(req.url);
 
     if (!routeConfig) {

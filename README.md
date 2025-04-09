@@ -160,6 +160,31 @@ bootstrap();
 
 For api gateway or communication between registered services. We using http proxy to handle proxy forwarding request to registered microservices.
 
+**NOTE:** Nest js always using body parser by default and body request alway read complete before streaming. But http proxy need raw body for streaming and we need to open raw body mode on Nest application options.
+
+```ts
+import { createNestroApplication } from "@duongtrungnguyen/nestro";
+
+import { AppModule } from "./app.module";
+
+async function bootstrap() {
+  const app = await createNestroApplication(
+    AppModule,
+    {
+      // ... Nestro application configs
+    },
+    {
+      rawBody: true, // Enable raw body
+    }
+  );
+
+  await app.listen();
+}
+bootstrap();
+```
+
+Now we can config route proxy using builder pattern. Nestro will automatically handle proxy request.
+
 ```ts
 /* nestro-gateway/gateway.module.ts */
 
@@ -173,12 +198,41 @@ import { Module } from "@nestjs/common";
         route: "/user/*", // Route to match
         retryLimit: 1, // Retry limit for the request
         target: "user", // Target service name
-        rewritePath: (path) => path.replace("/user", ""), // Rewrite path
+        pathRewrite: { "^/api/user": "/" }, // Rewrite path
+        timeout: 10000, // Proxy timeout
       })
       .build(),
   ],
 })
 export class GatewayModule {}
+```
+
+Or using `Proxy` decorator
+
+```ts
+import { Controller, Get, Param } from "@nestjs/common";
+import { Proxy } from "@duongtrungnguyen/nestro";
+
+@Controller("api")
+export class ApiController {
+  @Get("users")
+  @Proxy({
+    target: "https://api.example.com",
+    pathRewrite: { "^/api": "" },
+  })
+  proxyUsers() {
+    // Don't need code here, Nestro will auto handle proxy
+  }
+
+  @Get("products/:id")
+  @Proxy({
+    target: "https://products.example.com",
+    pathRewrite: { "^/api/products": "/products-api" },
+  })
+  proxyProduct(@Param("id") id: string) {
+    // Don't need code here, Nestro will auto handle proxy
+  }
+}
 ```
 
 For communication between multiple services. We using communication template to get best instance for communicate

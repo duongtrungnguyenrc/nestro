@@ -2,32 +2,36 @@ import { Logger } from "@nestjs/common";
 
 import { HttpProtocols } from "./types";
 
+const isDevelopment = process.env.NODE_ENV != "production";
+const disableLog = process.env.NESTRO_LOG == "off";
+const canLog = isDevelopment && !disableLog;
+
 export const debugLog = (context: string, message: string, data?: any) => {
-  const logger = new Logger(context);
-
-  const isDevelopment = process.env.NODE_ENV != "production";
-  const disableLog = process.env.NESTRO_LOG == "off";
-
-  if (isDevelopment && !disableLog) {
+  if (canLog) {
     if (data) {
-      logger.debug(`${message} - ${JSON.stringify(data)}`);
+      Logger.debug(`${message} - ${JSON.stringify(data)}`, context);
     } else {
-      logger.debug(message);
+      Logger.debug(message, context);
     }
   }
 };
 
 export const debugWarn = (context: string, message: string, data?: any) => {
-  const logger = new Logger(context);
-
-  const isDevelopment = process.env.NODE_ENV != "production";
-  const disableLog = process.env.NESTRO_LOG == "off";
-
-  if (isDevelopment && !disableLog) {
+  if (canLog) {
     if (data) {
-      logger.warn(`${message} - ${JSON.stringify(data)}`);
+      Logger.warn(`${message} - ${JSON.stringify(data)}`, context);
     } else {
-      logger.warn(message);
+      Logger.warn(message, context);
+    }
+  }
+};
+
+export const debugError = (context: string, message: string, data?: any) => {
+  if (canLog) {
+    if (data) {
+      Logger.error(`${message} - ${JSON.stringify(data)}`, context);
+    } else {
+      Logger.error(message, context);
     }
   }
 };

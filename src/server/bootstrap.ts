@@ -1,13 +1,13 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
+import { Module, NestApplicationOptions } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import { Module } from "@nestjs/common";
 import * as path from "path";
 import * as hbs from "hbs";
 
-import { debugLog, type NestroApplication } from "../common";
+import { registerHandlebarsHelpers } from "./helpers";
+import { type NestroApplication } from "../common";
 import type { NestroServerConfig } from "./types";
 import { ServerModule } from "./server.module";
-import { registerHandlebarsHelpers } from "./helpers";
 
 function wrapModuleWithRegistryServer(AppModule: any, options?: NestroServerConfig): any {
   @Module({
@@ -18,10 +18,14 @@ function wrapModuleWithRegistryServer(AppModule: any, options?: NestroServerConf
   return WrappedModule;
 }
 
-export async function createNestroServer(AppModule: any, options?: NestroServerConfig): Promise<NestroApplication> {
+export async function createNestroServer(
+  AppModule: any,
+  options?: NestroServerConfig,
+  applicationOptions?: NestApplicationOptions
+): Promise<NestroApplication> {
   const wrappedModule = wrapModuleWithRegistryServer(AppModule, options);
 
-  const app = await NestFactory.create<NestExpressApplication>(wrappedModule);
+  const app = await NestFactory.create<NestExpressApplication>(wrappedModule, applicationOptions);
 
   if (options.enableRegistryDashboard) {
     hbs.registerPartials(path.join(__dirname, "..", "..", "resources", "views", "partials"));
@@ -33,13 +37,5 @@ export async function createNestroServer(AppModule: any, options?: NestroServerC
     registerHandlebarsHelpers();
   }
 
-  return {
-    ...app,
-    listen: async (port: number) => {
-      const server = await app.listen(port);
-      debugLog("Nestro server", "Nestro server initial success");
-
-      return server;
-    },
-  };
+  return app;
 }

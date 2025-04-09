@@ -1,5 +1,6 @@
 import { NestExpressApplication } from "@nestjs/platform-express";
-import { Server } from "http";
+import type { Server as CoreHttpsServer } from "https";
+import type { Server as CoreHttpServer } from "http";
 
 /**
  * Supported HTTP protocols.
@@ -40,6 +41,7 @@ export type ServiceInstance = Service & {
 /**
  * Extended NestExpressApplication with an asynchronous listen method.
  */
-export type NestroApplication = NestExpressApplication & {
-  listen: (port?: number) => Promise<Server>;
-};
+export type NestroApplication<TServer extends CoreHttpServer | CoreHttpsServer = CoreHttpServer> =
+  NestExpressApplication<TServer> & {
+    listen: (port?: number) => Promise<TServer>;
+  };

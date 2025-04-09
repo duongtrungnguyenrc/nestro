@@ -17,7 +17,8 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "resolveJsonModule": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "resources/**/*"],
   "exclude": ["node_modules", "**/*.spec.ts", "tests", "dist"]

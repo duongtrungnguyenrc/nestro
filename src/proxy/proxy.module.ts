@@ -49,7 +49,7 @@ export class ProxyModuleBuilder {
       provide: PROXY_ROUTES_CONFIG,
       useValue: this.routes,
     };
-    
+
     return {
       module: ProxyModule,
       controllers: [ProxyController],
