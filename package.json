@@ -1,7 +1,7 @@
 {
   "name": "@duongtrungnguyen/nestro",
   "author": "Duong Trung Nguyen",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Service registry for Nest JS",
   "license": "MIT",
   "engines": {
@@ -52,7 +52,8 @@
   "dependencies": {
     "express": "^4.21.2",
     "handlebars": "^4.7.8",
-    "hbs": "^4.2.0"
+    "hbs": "^4.2.0",
+    "path-to-regexp": "^8.2.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
