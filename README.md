@@ -194,12 +194,18 @@ import { Module } from "@nestjs/common";
 @Module({
   imports: [
     ProxyModule.builder()
-      .route({
+      .httpRoute({
+        // proxy http request
         route: "/user/*", // Route to match
         retryLimit: 1, // Retry limit for the request
-        target: "user", // Target service name
+        service: "user", // Target registered service
+        target: "", // Force target path
         pathRewrite: { "^/api/user": "/" }, // Rewrite path
         timeout: 10000, // Proxy timeout
+      })
+      .wsRoute({
+        // proxy ws request
+        // ... same options with http route
       })
       .build(),
   ],
