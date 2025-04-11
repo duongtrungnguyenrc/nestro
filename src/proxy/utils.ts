@@ -1,14 +1,19 @@
 import { IncomingMessage } from "http";
+import { Socket } from "net";
 import { URL } from "url";
-import { OutgoingOptions, ProxyOptions, ProxyTarget } from "./types";
-import { Logger } from "@nestjs/common";
 
-// Regular expressions - compiled once for performance
-const UPGRADE_HEADER_REGEX = /(^|,)\s*upgrade\s*($|,)/i;
-export const SSL_PROTOCOL_REGEX = /^https|wss/;
+import { SSL_PROTOCOL_REGEX, UPGRADE_HEADER_REGEX, WEBSOCKET_UPGRADE_REGEX, SOCKET_IO_PATH_REGEX } from "./constants";
+import { OutgoingOptions, ProxyOptions, ProxyTarget } from "./types";
 
 /**
- * Set up outgoing request options
+ * Configures outgoing options for a proxy request.
+ * Supports HTTP, WebSocket, and Socket.IO by preserving headers and query strings.
+ *
+ * @param outgoing - Initial outgoing options.
+ * @param options - Proxy configuration options.
+ * @param req - The incoming HTTP request.
+ * @param forward - Optional key to select forward target (defaults to 'target').
+ * @returns Configured outgoing options.
  */
 export function setupOutgoing(
   outgoing: OutgoingOptions = {},
@@ -17,23 +22,77 @@ export function setupOutgoing(
   forward?: string
 ): OutgoingOptions {
   const targetKey = forward || "target";
-  if (!options[targetKey]) {
-    return outgoing;
-  }
+  const target = options[targetKey] as URL | ProxyTarget | undefined;
 
-  const target = options[targetKey] as URL | ProxyTarget;
+  if (!target) {
+    return outgoing; // No target, return unchanged
+  }
 
   // Set port
-  if ((target as ProxyTarget).port) {
-    outgoing.port = (target as ProxyTarget).port;
-  } else if ((target as URL).port) {
-    outgoing.port = parseInt((target as URL).port, 10);
-  } else {
-    outgoing.port = SSL_PROTOCOL_REGEX.test((target as URL).protocol || "") ? 443 : 80;
+  outgoing.port = getTargetPort(target);
+
+  // Copy target properties
+  copyTargetProperties(outgoing, target);
+
+  // Configure method and headers
+  outgoing.method = req.method || "GET";
+  outgoing.headers = { ...req.headers };
+
+  // Add custom headers
+  if (options.headers) {
+    Object.assign(outgoing.headers, options.headers);
   }
 
-  // Copy properties from target
-  const targetProps = [
+  // Set SSL options
+  if (SSL_PROTOCOL_REGEX.test((target as URL).protocol || "")) {
+    outgoing.rejectUnauthorized = options.secure !== undefined ? options.secure : true;
+  }
+
+  // Set agent and local address
+  outgoing.agent = options.agent || false;
+  outgoing.localAddress = options.localAddress;
+
+  // Handle WebSocket/Socket.IO headers
+  configureConnectionHeader(outgoing, req);
+
+  // Build path with query string
+  outgoing.path = buildPath(target, req.url || "/", options);
+
+  // Set host header for changeOrigin
+  if (options.changeOrigin) {
+    const hostHeader = getHostHeader(outgoing);
+    if (hostHeader) {
+      outgoing.headers.host = hostHeader;
+    }
+  }
+
+  return outgoing;
+}
+
+/**
+ * Determines the port for the target server.
+ *
+ * @param target - The target URL or ProxyTarget.
+ * @returns The port number.
+ */
+function getTargetPort(target: URL | ProxyTarget): number {
+  if ((target as ProxyTarget).port) {
+    return (target as ProxyTarget).port!;
+  }
+  if ((target as URL).port) {
+    return parseInt((target as URL).port, 10);
+  }
+  return SSL_PROTOCOL_REGEX.test((target as URL).protocol || "") ? 443 : 80;
+}
+
+/**
+ * Copies properties from the target to outgoing options.
+ *
+ * @param outgoing - Outgoing options to modify.
+ * @param target - The target URL or ProxyTarget.
+ */
+function copyTargetProperties(outgoing: OutgoingOptions, target: URL | ProxyTarget): void {
+  const props = [
     "host",
     "hostname",
     "socketPath",
@@ -46,134 +105,164 @@ export function setupOutgoing(
     "secureProtocol",
   ];
 
-  for (const prop of targetProps) {
-    if ((target as any)[prop] !== undefined) {
-      (outgoing as any)[prop] = (target as any)[prop];
+  for (const prop of props) {
+    if (target[prop] !== undefined) {
+      (outgoing as any)[prop] = target[prop];
     }
   }
+}
 
-  // Set method and headers
-  outgoing.method = req.method || "GET";
-  outgoing.headers = { ...req.headers };
+/**
+ * Configures the Connection header for WebSocket or non-WebSocket requests.
+ *
+ * @param outgoing - Outgoing options to modify.
+ * @param req - The incoming HTTP request.
+ */
+function configureConnectionHeader(outgoing: OutgoingOptions, req: IncomingMessage): void {
+  const isWebSocket =
+    req.headers.upgrade &&
+    WEBSOCKET_UPGRADE_REGEX.test(req.headers.upgrade.toLowerCase()) &&
+    req.headers.connection &&
+    UPGRADE_HEADER_REGEX.test(req.headers.connection.toLowerCase());
 
-  // Add custom headers
-  if (options.headers) {
-    Object.assign(outgoing.headers, options.headers);
-  }
-
-  // Set auth if provided
-  if (options.auth) {
-    outgoing.auth =
-      typeof options.auth === "string" ? options.auth : `${options.auth.username}:${options.auth.password}`;
-  }
-
-  // Set SSL options
-  if (SSL_PROTOCOL_REGEX.test((target as URL).protocol || "")) {
-    outgoing.rejectUnauthorized = options.secure !== undefined ? options.secure : true;
-  }
-
-  // Set agent and local address
-  outgoing.agent = options.agent || false;
-  outgoing.localAddress = options.localAddress;
-
-  // Set connection header if agent is false
-  if (!outgoing.agent) {
-    outgoing.headers = outgoing.headers || {};
-    if (
-      typeof outgoing.headers.connection !== "string" ||
-      !UPGRADE_HEADER_REGEX.test(outgoing.headers.connection as string)
-    ) {
-      outgoing.headers.connection = "close";
+  outgoing.headers = outgoing.headers || {};
+  if (isWebSocket) {
+    // Ensure Connection: upgrade for WebSocket/Socket.IO
+    if (!outgoing.headers.connection) {
+      outgoing.headers.connection = "upgrade";
     }
+  } else if (!outgoing.agent && !outgoing.headers.connection) {
+    // Set Connection: close for non-WebSocket requests without agent
+    outgoing.headers.connection = "close";
   }
+}
 
-  // Build the path
+/**
+ * Builds the outgoing path, preserving query strings for Socket.IO.
+ *
+ * @param target - The target URL or ProxyTarget.
+ * @param reqUrl - The incoming request URL.
+ * @param options - Proxy configuration options.
+ * @returns The constructed path.
+ */
+function buildPath(target: URL | ProxyTarget, reqUrl: string, options: ProxyOptions): string {
+  // Get target path
   let targetPath = "";
-  if (target && options.prependPath !== false) {
-    targetPath = (target as ProxyTarget).path || "";
+  if (options.prependPath !== false) {
+    targetPath = (target as ProxyTarget).path || (target as URL).pathname || "";
   }
 
-  // Get the outgoing path
+  // Parse request URL
   let outgoingPath = "";
+  let queryString = "";
   if (!options.toProxy) {
-    outgoingPath = new URL(req.url || "/", "http://localhost").pathname || "";
+    const parsedUrl = new URL(reqUrl, "http://localhost");
+    outgoingPath = parsedUrl.pathname || "";
+    queryString = parsedUrl.search || ""; // Preserve Socket.IO query (e.g., ?EIO=4)
   } else {
-    outgoingPath = req.url || "/";
+    outgoingPath = reqUrl || "/";
   }
 
-  // Apply ignorePath option
-  outgoingPath = !options.ignorePath ? outgoingPath : "";
+  // Apply ignorePath
+  if (options.ignorePath) {
+    outgoingPath = "";
+  }
 
-  // Apply pathRewrite if provided (NestJS specific)
+  // Apply pathRewrite
   if (options.pathRewrite) {
     for (const pattern in options.pathRewrite) {
       outgoingPath = outgoingPath.replace(new RegExp(pattern), options.pathRewrite[pattern]);
     }
   }
 
-  // Join paths
-  outgoing.path = urlJoin(targetPath, outgoingPath);
-
-  // Set host header for changeOrigin
-  if (options.changeOrigin) {
-    const hostHeader =
-      outgoing.port !== 80 && outgoing.port !== 443
-        ? `${outgoing.hostname || outgoing.host}:${outgoing.port}`
-        : outgoing.hostname || outgoing.host;
-
-    if (hostHeader) {
-      outgoing.headers.host = hostHeader;
-    }
-  }
-
-  return outgoing;
+  // Join paths and preserve query string
+  return joinPaths(targetPath, outgoingPath) + queryString;
 }
 
 /**
- * Set up socket options
+ * Constructs the host header for changeOrigin.
+ *
+ * @param outgoing - Outgoing options.
+ * @returns The host header string or undefined.
  */
-export function setupSocket(socket: any): any {
-  socket.setTimeout(0);
-  socket.setNoDelay(true);
-  socket.setKeepAlive(true, 0);
+function getHostHeader(outgoing: OutgoingOptions): string | undefined {
+  if (outgoing.port !== 80 && outgoing.port !== 443) {
+    return `${outgoing.hostname || outgoing.host}:${outgoing.port}`;
+  }
+  return outgoing.hostname || outgoing.host;
+}
+
+/**
+ * Joins multiple URL paths, normalizing slashes.
+ *
+ * @param paths - Paths to join.
+ * @returns The joined path.
+ */
+function joinPaths(...paths: string[]): string {
+  if (!paths.length) return "";
+
+  const filteredPaths = paths.filter(Boolean);
+  if (!filteredPaths.length) return "";
+
+  return filteredPaths
+    .join("/")
+    .replace(/\/+/g, "/")
+    .replace(/http:\/|https:\//g, (match) => match.replace(":/", "://"));
+}
+
+/**
+ * Configures socket options for optimal performance.
+ * Used for WebSocket and Socket.IO connections.
+ *
+ * @param socket - The socket to configure.
+ * @returns The configured socket.
+ */
+export function setupSocket(socket: Socket): Socket {
+  socket.setTimeout(0); // Disable timeout
+  socket.setNoDelay(true); // Disable Nagle's algorithm
+  socket.setKeepAlive(true, 0); // Enable keep-alive
   return socket;
 }
 
 /**
- * Check if connection is encrypted
+ * Checks if the connection is encrypted (HTTPS/WSS).
+ *
+ * @param req - The incoming HTTP request.
+ * @returns True if the connection is encrypted, false otherwise.
  */
 export function hasEncryptedConnection(req: IncomingMessage): boolean {
-  return Boolean((req.socket as any).encrypted || (req.socket as any).pair);
+  const socket = req.socket as any;
+  return Boolean(socket.encrypted || socket.pair);
 }
 
 /**
- * Join URL paths
+ * Joins URL paths while preserving query strings.
+ *
+ * @param args - Paths to join.
+ * @returns The joined URL path.
  */
 export function urlJoin(...args: string[]): string {
-  // Get the last argument
-  const lastIndex = args.length - 1;
-  const last = args[lastIndex];
+  if (!args.length) return "";
 
-  if (!last) return "";
+  // Extract query string from the last argument
+  const last = args[args.length - 1];
+  const [path, ...queryParts] = last.split("?");
+  const paths = [...args.slice(0, -1), path].filter(Boolean);
 
-  // Split by query string
-  const lastSegs = last.split("?");
-  args[lastIndex] = lastSegs.shift() || "";
+  // Join paths
+  const joinedPath = joinPaths(...paths);
 
-  // Join all parts, filtering out empty strings
-  const path = args
-    .filter(Boolean)
-    .join("/")
-    .replace(/\/+/g, "/")
-    .replace("http:/", "http://")
-    .replace("https:/", "https://");
-
-  // Add query string back if it exists
-  return lastSegs.length > 0 ? `${path}?${lastSegs.join("?")}` : path;
+  // Append query string if present
+  return queryParts.length > 0 ? `${joinedPath}?${queryParts.join("?")}` : joinedPath;
 }
 
 /**
- * Rewrite cookie property (domain or path)
+ * Rewrites cookie properties (domain or path) in headers.
+ *
+ * @param header - The cookie header(s).
+ * @param config - Configuration mapping for rewriting.
+ * @param property - The property to rewrite (e.g., 'domain', 'path').
+ * @returns The rewritten cookie header(s).
  */
 export function rewriteCookieProperty(
   header: string | string[],
@@ -185,63 +274,18 @@ export function rewriteCookieProperty(
   }
 
   const pattern = new RegExp(`(;\\s*${property}=)([^;]+)`, "i");
-
   return header.replace(pattern, (match, prefix, previousValue) => {
-    let newValue;
-
-    if (previousValue in config) {
-      newValue = config[previousValue];
-    } else if ("*" in config) {
-      newValue = config["*"];
-    } else {
-      return match; // No match, return unchanged
-    }
-
-    if (newValue) {
-      return prefix + newValue; // Replace value
-    } else {
-      return ""; // Remove property
-    }
+    const newValue = previousValue in config ? config[previousValue] : config["*"];
+    return newValue ? `${prefix}${newValue}` : "";
   });
 }
 
 /**
- * Logger for proxy events
+ * Checks if the request is for Socket.IO.
+ *
+ * @param req - The incoming HTTP request.
+ * @returns True if the request targets Socket.IO, false otherwise.
  */
-export class ProxyLogger {
-  private logger = new Logger("Proxy");
-
-  constructor(private readonly options: ProxyOptions) {}
-
-  log(level: string, message: string, ...args: any[]): void {
-    if (!this.options.logLevel || this.options.logLevel === "silent") {
-      return;
-    }
-
-    const levels = ["debug", "info", "warn", "error"];
-    const levelIndex = levels.indexOf(level);
-    const configLevelIndex = levels.indexOf(this.options.logLevel);
-
-    if (levelIndex >= configLevelIndex) {
-      const logger = this.options.logProvider ? this.options.logProvider(console) : console;
-
-      logger[level](message, ...args);
-    }
-  }
-
-  debug(message: string, ...args: any[]): void {
-    this.logger.debug(message, ...args);
-  }
-
-  info(message: string, ...args: any[]): void {
-    this.logger.log(message, ...args);
-  }
-
-  warn(message: string, ...args: any[]): void {
-    this.logger.warn(message, ...args);
-  }
-
-  error(message: string, ...args: any[]): void {
-    this.logger.error(message, ...args);
-  }
+export function isSocketIORequest(req: IncomingMessage): boolean {
+  return !!req.url && SOCKET_IO_PATH_REGEX.test(req.url);
 }

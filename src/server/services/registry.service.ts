@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 
 import { IRegistryStorage, STORAGE, STORAGE_OPTIONS, StorageOptions } from "../../storage";
-import type { Service, ServiceInstance } from "../../common";
 import type { RegisterResponse } from "../types";
+import type { Service } from "../../common";
 
 @Injectable()
 export class RegistryService {
@@ -13,39 +13,22 @@ export class RegistryService {
 
   async register(service: Service): Promise<RegisterResponse> {
     const key = service.name;
-    const instance = this.createServiceInstance(service);
-    const instanceId = this.storage.getInstanceId(instance);
-    await this.storage.register(key, instanceId, instance);
+    await this.storage.register(key, service);
 
     return { heartbeatInterval: this.storageOptions.heartbeatInterval };
   }
 
   async deregister(service: Service) {
-    const key = service.name;
-    const instanceId = this.storage.getInstanceId(service);
-    await this.storage.deregister(key, instanceId);
-
+    await this.storage.deregister(service.name, service);
     return { message: "Deregistered" };
   }
 
   async heartbeat(service: Service) {
-    const key = service.name;
-    const instanceId = this.storage.getInstanceId(service);
-    await this.storage.heartbeat(key, instanceId, this.storageOptions.cleanupTTL);
-
+    await this.storage.heartbeat(service.name, service);
     return { message: "Heartbeat received" };
   }
 
-  async getServices(serviceName?: string): Promise<Record<string, ServiceInstance[]>> {
+  async getServices(serviceName?: string) {
     return await this.storage.getServices(serviceName);
-  }
-
-  private createServiceInstance(service: Service): ServiceInstance {
-    return {
-      ...service,
-      expireAt: Date.now() + this.storageOptions.cleanupTTL * 1000,
-      timestamp: Date.now(),
-      status: "ON",
-    };
   }
 }

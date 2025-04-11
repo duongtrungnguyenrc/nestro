@@ -1,4 +1,5 @@
 import { Inject } from "@nestjs/common";
+
 import { debugLog, type Service, type ServiceInstance } from "../../common";
 import { IRegistryStorage } from "../interfaces";
 import type { StorageOptions } from "../types";
@@ -9,43 +10,58 @@ export class MemoryStorage implements IRegistryStorage {
   private cleanupInterval?: NodeJS.Timeout;
 
   constructor(@Inject(STORAGE_OPTIONS) private readonly options: StorageOptions) {
-    this.cleanupInterval = setInterval(() => this.cleanup(), options.cleanupTTL);
+    this.cleanupInterval = setInterval(() => this.cleanup(), options.cleanupTTL * 1000);
     debugLog("RegistryService", "Using in-memory store");
   }
 
-  async register(key: string, instanceId: string, instance: ServiceInstance): Promise<void> {
-    let instances = this.memoryStore.get(key);
-    if (!instances) {
-      instances = new Map();
-      this.memoryStore.set(key, instances);
-    }
-    instances.set(instanceId, instance);
-    debugLog("RegistryService", "Registered service in memory", { key, instance });
+  async register(key: string, instance: Service): Promise<void> {
+    const now = Date.now();
+    const instances = this.getOrCreateInstances(key);
+    const instanceId = this.getInstanceId(instance);
+
+    instances.set(instanceId, {
+      ...instance,
+      status: "ON",
+      timestamp: now,
+      lastHeartbeatAt: now,
+      missedHeartbeats: 0,
+    });
+
+    debugLog("RegistryService", "Registered service in memory", { key, instanceId });
   }
 
-  async deregister(key: string, instanceId: string): Promise<void> {
+  async heartbeat(key: string, instance: Service): Promise<void> {
+    const now = Date.now();
+    const instances = this.getOrCreateInstances(key);
+    const instanceId = this.getInstanceId(instance);
+    const existingInstance = instances.get(instanceId);
+
+    if (!existingInstance) {
+      // Auto register on heartbeat (optional)
+      await this.register(key, instance);
+      debugLog("RegistryService", "Recovered missing instance via heartbeat", { key, instanceId });
+      return;
+    }
+
+    existingInstance.lastHeartbeatAt = now;
+    existingInstance.missedHeartbeats = 0;
+    existingInstance.status = "ON";
+
+    debugLog("RegistryService", "Heartbeat received", { key, instanceId });
+  }
+
+  async deregister(key: string, instance: Service): Promise<void> {
     const instances = this.memoryStore.get(key);
     if (!instances) return;
 
+    const instanceId = this.getInstanceId(instance);
     instances.delete(instanceId);
+
     if (instances.size === 0) {
       this.memoryStore.delete(key);
     }
+
     debugLog("RegistryService", "Deregistered service from memory", { key, instanceId });
-  }
-
-  async heartbeat(key: string, instanceId: string): Promise<void> {
-    const instances = this.memoryStore.get(key);
-    if (!instances) return;
-
-    const instance = instances.get(instanceId);
-    if (!instance) return;
-
-    instance.timestamp = Date.now();
-    instance.expireAt = instance.timestamp + this.options.heartbeatInterval;
-    instance.status = "ON";
-
-    debugLog("RegistryService", "Heartbeat updated in memory", { key, instance });
   }
 
   async getServices(serviceName?: string): Promise<Record<string, ServiceInstance[]>> {
@@ -63,16 +79,27 @@ export class MemoryStorage implements IRegistryStorage {
 
   cleanup(): void {
     const now = Date.now();
+    const heartbeatThreshold = this.options.heartbeatInterval;
 
     for (const [key, instances] of this.memoryStore.entries()) {
-      instances.forEach((instance, id) => {
-        if (now > instance.expireAt) {
-          instances.delete(id);
-          debugLog("RegistryService", "Removed expired service", { key, instance });
-        } else if (now - instance.timestamp > this.options.heartbeatInterval) {
+      for (const [id, instance] of instances.entries()) {
+        const missedDuration = now - instance.lastHeartbeatAt;
+
+        if (missedDuration > heartbeatThreshold) {
+          instance.missedHeartbeats += 1;
+
+          if (instance.missedHeartbeats >= this.options.evictionThreshold) {
+            instances.delete(id);
+            debugLog("RegistryService", "Evicted service after missed heartbeats", { key, id });
+            continue;
+          }
+
           instance.status = "OFF";
+        } else {
+          instance.status = "ON";
+          instance.missedHeartbeats = 0;
         }
-      });
+      }
 
       if (instances.size === 0) {
         this.memoryStore.delete(key);
@@ -84,11 +111,21 @@ export class MemoryStorage implements IRegistryStorage {
   async disconnect(): Promise<void> {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
       debugLog("RegistryService", "Stopped cleanup interval");
     }
   }
 
-  getInstanceId(instance: Service | ServiceInstance): string {
+  getInstanceId(instance: Service): string {
     return `${instance.name}:${instance.host}:${instance.port}`;
+  }
+
+  private getOrCreateInstances(key: string): Map<string, ServiceInstance> {
+    let instances = this.memoryStore.get(key);
+    if (!instances) {
+      instances = new Map();
+      this.memoryStore.set(key, instances);
+    }
+    return instances;
   }
 }

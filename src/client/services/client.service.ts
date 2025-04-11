@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from "@nestjs/common";
 
-import { buildUrl, debugLog, normalizeJson } from "../../common";
+import { buildHttpUrl, debugLog, normalizeJson } from "../../common";
 import { INSTANCE_INFO, SERVER_INFO } from "../constants";
 import type { ServerInfo, InstanceInfo } from "../types";
 import { RegisterResponse } from "../../server";
@@ -16,7 +16,7 @@ export class ClientService implements OnModuleInit, OnModuleDestroy {
     @Inject(SERVER_INFO) private readonly serverInfo: ServerInfo,
     @Inject(KeyService) private readonly keyService: KeyService
   ) {
-    this.serverBaseUrl = buildUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
+    this.serverBaseUrl = buildHttpUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
   }
 
   async onModuleInit() {

@@ -1,8 +1,8 @@
 import { Module, DynamicModule, ValueProvider } from "@nestjs/common";
 
+import { DEFAULT_HOST, DEFAULT_SERVER_PORT, getHttpSecureProtocol, type ServiceInstance } from "../common";
 import type { NestroClientConfig, ServerInfo, InstanceInfo } from "./types";
 import { INSTANCE_INFO, INSTANCES, SERVER_INFO } from "./constants";
-import { DEFAULT_HOST, DEFAULT_SERVER_PORT, getSecureProtocol, type ServiceInstance } from "../common";
 import { LoadBalancingModule } from "../loadbalancing";
 import { SecurityModule } from "../security";
 import { ClientService } from "./services";
@@ -15,7 +15,7 @@ export class ClientModule {
       useValue: {
         ...config.client,
         host: config.client.host || DEFAULT_HOST,
-        protocol: getSecureProtocol(config.server.secure),
+        protocol: getHttpSecureProtocol(config.server.secure),
       },
     };
 
@@ -24,7 +24,7 @@ export class ClientModule {
       useValue: {
         ...config.server,
         port: config.server.port || DEFAULT_SERVER_PORT,
-        protocol: getSecureProtocol(config.server.secure),
+        protocol: getHttpSecureProtocol(config.server.secure),
       },
     };
 

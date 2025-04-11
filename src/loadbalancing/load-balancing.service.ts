@@ -1,7 +1,7 @@
 import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, Logger } from "@nestjs/common";
 
 import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "./constants";
-import { buildUrl, debugLog, ServiceInstance } from "../common";
+import { buildHttpUrl, debugLog, ServiceInstance } from "../common";
 import { TemporaryFailureTracker } from "./failure-tracker";
 import type { LoadBalancingConfigs } from "./types";
 import { ResponseTimeStrategy } from "./strategies";
@@ -21,7 +21,7 @@ export class LoadBalancingService implements OnModuleInit, OnModuleDestroy {
     @Inject(SERVER_INFO) private readonly serverInfo: ServerInfo,
     @Inject(TemporaryFailureTracker) private readonly failureTracker: TemporaryFailureTracker
   ) {
-    this.serverBaseUrl = buildUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
+    this.serverBaseUrl = buildHttpUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
   }
 
   async onModuleInit() {
@@ -108,7 +108,7 @@ export class LoadBalancingService implements OnModuleInit, OnModuleDestroy {
       throw new Error(`Failed to select an instance for service: ${serviceName}`);
     }
 
-    const baseUrl = buildUrl(selectedInstance.host, selectedInstance.protocol, selectedInstance.port);
+    const baseUrl = buildHttpUrl(selectedInstance.host, selectedInstance.protocol, selectedInstance.port);
     return `${baseUrl}${path}`;
   }
 

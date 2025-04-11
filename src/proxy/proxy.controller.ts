@@ -1,12 +1,17 @@
-import { Controller, All, Req, Res, Inject, CanActivate, ExecutionContext, RawBodyRequest, Type } from "@nestjs/common";
-import { version } from "@nestjs/core/package.json";
+import { Controller, All, Req, Res, Inject, RawBodyRequest } from "@nestjs/common";
+import { CanActivate, ExecutionContext } from "@nestjs/common/interfaces";
 import { Request, Response } from "express";
 import { match } from "path-to-regexp";
 
-import { PROXY_ROUTES_CONFIG } from "../client/constants";
+import { WEBSOCKET_UPGRADE_HEADER } from "./constants";
 import type { ProxyRouteConfig } from "./types";
+import { PROXY_ROUTES_CONFIG } from "../client";
 import { ProxyService } from "./proxy.service";
 
+/**
+ * Controller for handling proxy requests.
+ * Routes HTTP and WebSocket requests (including Socket.IO) to appropriate targets based on configuration.
+ */
 @Controller()
 export class ProxyController {
   constructor(
@@ -14,39 +19,75 @@ export class ProxyController {
     @Inject(PROXY_ROUTES_CONFIG) private readonly routesConfig: ProxyRouteConfig[]
   ) {}
 
-  @All(version.startsWith("10") ? "*" : "*splat")
-  handleRequest(@Req() req: RawBodyRequest<Request>, @Res() res: Response) {
+  /**
+   * Handles all incoming requests (HTTP and WebSocket) and routes them to the proxy service.
+   *
+   * @param req - The incoming request with raw body.
+   * @param res - The outgoing response.
+   * @returns A promise resolving when the request is handled, or a response for errors.
+   */
+  @All("*")
+  async handleRequest(@Req() req: RawBodyRequest<Request>, @Res() res: Response): Promise<void> {
     const routeConfig = this.findMatchingRoute(req.url);
 
     if (!routeConfig) {
-      return res.status(404).json({ error: "Route not found" });
+      res.status(404).json({ error: "Route not found" });
+      return;
     }
 
-    if (routeConfig.guards?.length) {
-      if (!this.guardCheck(routeConfig.guards, req)) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    if (routeConfig.guards?.length && !this.checkGuards(routeConfig.guards, req)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
     }
 
-    return this.proxyService.proxyRequest(req, res, routeConfig);
+    if (this.isWebSocketRequest(req)) {
+      await this.proxyService.proxyWebSocketRequest(req, res, routeConfig);
+      return;
+    }
+
+    await this.proxyService.proxyHttpRequest(req, res, routeConfig);
   }
 
-  private guardCheck(guards: Array<Type<CanActivate>>, request: Request) {
-    return guards.every((guard) => {
-      const instance = new guard();
-
-      return instance.canActivate({ switchToHttp: () => ({ getRequest: () => request }) } as ExecutionContext);
+  /**
+   * Checks if all guards allow the request to proceed.
+   *
+   * @param guards - Array of guard classes to check.
+   * @param request - The incoming request.
+   * @returns True if all guards pass, false otherwise.
+   */
+  private checkGuards(guards: Array<new () => CanActivate>, request: Request): boolean {
+    return guards.every((Guard) => {
+      const guard = new Guard();
+      const context: ExecutionContext = {
+        switchToHttp: () => ({ getRequest: () => request }),
+      } as ExecutionContext;
+      return guard.canActivate(context);
     });
   }
 
+  /**
+   * Finds a matching route configuration for the given URL.
+   *
+   * @param url - The request URL to match.
+   * @returns The matching route configuration, or undefined if none found.
+   */
   private findMatchingRoute(url: string): ProxyRouteConfig | undefined {
-    for (const routeConfig of this.routesConfig) {
-      const matcher = match(routeConfig.route, { decode: decodeURIComponent });
+    for (const config of this.routesConfig) {
+      const matcher = match(config.route, { decode: decodeURIComponent });
       if (matcher(url)) {
-        return routeConfig;
+        return config;
       }
     }
-
     return undefined;
+  }
+
+  /**
+   * Determines if the request is a WebSocket upgrade request.
+   *
+   * @param req - The incoming request.
+   * @returns True if the request is for WebSocket, false otherwise.
+   */
+  private isWebSocketRequest(req: Request): boolean {
+    return !!req.headers.upgrade && req.headers.upgrade.toLowerCase() === WEBSOCKET_UPGRADE_HEADER;
   }
 }

@@ -1,6 +1,6 @@
 import { DynamicModule, FactoryProvider, Module, ValueProvider } from "@nestjs/common";
 
-import { DEFAULT_CLEANUP_TTL, DEFAULT_HEARBEAT_INTERVAL } from "../common";
+import { DEFAULT_CLEANUP_TTL, DEFAULT_EVICTATION_THRESHOLD, DEFAULT_HEARBEAT_INTERVAL } from "../common";
 import type { StorageConfigs, StorageOptions } from "./types";
 import { STORAGE, STORAGE_OPTIONS } from "./constants";
 import { IRegistryStorage } from "./interfaces";
@@ -12,8 +12,9 @@ export class StorageModule {
     const storageOptionsProvider: ValueProvider<StorageOptions> = {
       provide: STORAGE_OPTIONS,
       useValue: {
-        cleanupTTL: config?.cleanupTTL ?? DEFAULT_CLEANUP_TTL,
+        cleanupTTL: config.cleanupTTL ?? DEFAULT_CLEANUP_TTL,
         heartbeatInterval: config.heartbeatInterval ?? DEFAULT_HEARBEAT_INTERVAL,
+        evictionThreshold: config.evictionThreshold ?? DEFAULT_EVICTATION_THRESHOLD,
       },
     };
 
