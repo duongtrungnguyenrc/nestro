@@ -1,6 +1,6 @@
 <div align="center">
 
-# NESTRO
+<img src="https://github.com/user-attachments/assets/09579645-adb7-4be6-a503-f7c297ed62e5" style="width:200px;height:200px;object-fit:cover;"></img>
 
 _Empower seamless microservices with effortless service discovery._
 
