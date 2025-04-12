@@ -1,16 +1,18 @@
-import { Inject } from "@nestjs/common";
+import { Inject, OnModuleInit } from "@nestjs/common";
 
 import { debugLog, type Service, type ServiceInstance } from "../../common";
 import { IRegistryStorage } from "../interfaces";
 import type { StorageOptions } from "../types";
 import { STORAGE_OPTIONS } from "../constants";
 
-export class MemoryStorage implements IRegistryStorage {
+export class MemoryStorage implements IRegistryStorage, OnModuleInit {
   private memoryStore = new Map<string, Map<string, ServiceInstance>>();
   private cleanupInterval?: NodeJS.Timeout;
 
-  constructor(@Inject(STORAGE_OPTIONS) private readonly options: StorageOptions) {
-    this.cleanupInterval = setInterval(() => this.cleanup(), options.cleanupTTL * 1000);
+  constructor(@Inject(STORAGE_OPTIONS) private readonly options: StorageOptions) {}
+
+  onModuleInit() {
+    this.cleanupInterval = setInterval(() => this.cleanup(), this.options.cleanupTTL);
     debugLog("RegistryService", "Using in-memory store");
   }
 

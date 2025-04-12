@@ -17,7 +17,7 @@
                     <th>Port</th>
                     <th>Status</th>
                     <th>Registered At</th>
-                    <th>Expires At</th>
+                    <th>Status</th>
                     <th>Actions</th>
                     </tr>
                 </thead>
@@ -27,14 +27,14 @@
                         <td>{{host}}</td>
                         <td>{{port}}</td>
                         <td>
-                        {{#if (isExpiring expireAt)}}
-                            <span class="badge badge-warning">Expiring Soon</span>
-                        {{else}}
+                        {{#if (isActive status)}}
                             <span class="badge badge-success">Active</span>
+                        {{else}}
+                            <span class="badge badge-warning">Expiring Soon</span>
                         {{/if}}
                         </td>
                         <td>{{formatDate timestamp}}</td>
-                        <td>{{formatDate expireAt}}</td>
+                        <td>{{status}}</td>
                         <td>
                         <button
                             class="btn btn-danger deregister-btn"
