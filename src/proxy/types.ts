@@ -1,9 +1,27 @@
-import { CanActivate, NestMiddleware, Type } from "@nestjs/common";
+import { CanActivate, DynamicModule, NestMiddleware, RequestMethod, Type } from "@nestjs/common";
 import { IncomingMessage, ServerResponse } from "http";
 import { Socket } from "net";
 import { URL } from "url";
 
 import { ServiceInstance } from "../common";
+import { ProxyModuleBuilder } from "./proxy-module.builder";
+
+export type HookExclude = {
+  path: string;
+  method: RequestMethod;
+};
+
+export type RequestHook<T> =
+  | {
+      instance: Type<T>;
+      excludes?: Array<HookExclude>;
+    }
+  | Type<T>;
+
+export type ProxyRequestHooks = Partial<{
+  middlewares: Array<RequestHook<NestMiddleware>>;
+  guards: Array<RequestHook<CanActivate>>;
+}>;
 
 /**
  * Configuration for defining a proxy route.
@@ -19,12 +37,15 @@ import { ServiceInstance } from "../common";
 export type ProxyRouteConfig = {
   route: string;
   service?: string;
-  middlewares?: Type<NestMiddleware>[];
-  guards?: Type<CanActivate>[];
   pathRewrite?: { [key: string]: string };
   timeout?: number;
   protocol?: "http" | "ws";
   target?: ((instance: ServiceInstance) => string) | string;
+  requestHooks?: ProxyRequestHooks;
+};
+
+export type IRoutingConfig = {
+  configure(builder: ProxyModuleBuilder): DynamicModule | Promise<DynamicModule>;
 };
 
 /**

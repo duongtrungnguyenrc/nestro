@@ -1,6 +1,7 @@
 import { applyDecorators, UseInterceptors } from "@nestjs/common";
-import { ProxyOptions } from "./types";
+
 import { ProxyInterceptor } from "./proxy.interceptor";
+import { ProxyOptions } from "./types";
 
 /**
  * Decorator to proxy requests to a target server

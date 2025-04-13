@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/09579645-adb7-4be6-a503-f7c297ed62e5" style="width:200px;height:200px;object-fit:cover;"></img>
+<img src="https://github.com/user-attachments/assets/09579645-adb7-4be6-a503-f7c297ed62e5" style="width:180px;height:180px;object-fit:cover;"></img>
 
 _Empower seamless microservices with effortless service discovery._
 
@@ -12,23 +12,11 @@ _Built with the tools and technologies:_
 
 </div>
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Samples](#samples)
-
----
-
-## Overview
+## I. Overview
 
 Nestro is a powerful service registry designed for NestJS applications. It streamlines the management and discovery of microservices by offering an HTTP-based pooling mechanism, real-time service monitoring, and a comprehensive dashboard for managing service dependencies. Nestro provides essential tools for efficient service registration and load balancing, tailored specifically for the NestJS ecosystem.
 
-**Features**
+**1. Features**
 
 - **HTTP Pooling & Service Registration:**  
   Services register themselves via HTTP requests. Regular heartbeats are sent to ensure that the registry remains updated with active instances.
@@ -41,7 +29,7 @@ Nestro is a powerful service registry designed for NestJS applications. It strea
 - **User-Friendly Dashboard:**  
   Monitor service instances in real-time, manage service dependencies, and perform administrative actions (e.g., deregistering services) directly through the dashboard.
 
-**How it works?**
+**2. How it works?**
 
 **_HTTP Pooling & Service Registration_**
 
@@ -55,7 +43,7 @@ Nestro is a powerful service registry designed for NestJS applications. It strea
 **_Dependency Dashboard_**
 
 - **Real-Time Monitoring:**  
-  The integrated dashboard displays the status of every registered service instance, including metrics like instance count, registration time, and expiration time.
+  The integrated dashboard displays the status of every registered service instance, including metrics like instance count, registration time, and registration status.
 - **Dependency Management:**  
   Easily visualize and manage service dependencies. The dashboard highlights relationships between services, allowing for quick identification of potential bottlenecks or scalability issues.
 - **Administrative Actions:**  
@@ -63,7 +51,7 @@ Nestro is a powerful service registry designed for NestJS applications. It strea
 
 ---
 
-## Getting Started
+## II. Getting Started
 
 ### Prerequisites
 
@@ -93,9 +81,9 @@ Build nestro from the source and intsall dependencies:
 
     ❯ pnpm install @duongtrungnguyenrc/nestro@latest
 
-### Samples
+### III. Samples
 
-**Nestro server**
+**1. Nestro server**
 
 Nestro needs an intermediary service to handle the service registry to avoid bottlenecks.
 
@@ -119,7 +107,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-**Nestro client applications**
+**2. Nestro client applications**
 
 Nestro client is that the microservices will register with the nestro server and use pooling to periodically send heartbeats to notify the nestro server that the client instance is still active.
 
@@ -157,6 +145,8 @@ async function bootstrap() {
 }
 bootstrap();
 ```
+
+**3. Gateway and communcations**
 
 For api gateway or communication between registered services. We using http proxy to handle proxy forwarding request to registered microservices.
 
@@ -202,15 +192,56 @@ import { Module } from "@nestjs/common";
         target: "", // Force target path
         pathRewrite: { "^/api/user": "/" }, // Rewrite path
         timeout: 10000, // Proxy timeout
+        requestHooks: {
+          guards: [], // guards,
+          middlewares: [], // middlewares
+        },
       })
       .wsRoute({
         // proxy ws request
         // ... same options with http route
       })
+      .useGlobalMiddleware(/*... middlewares */)
+      .useGlobalGuard(/*... guards */)
       .build(),
   ],
 })
 export class GatewayModule {}
+```
+
+Or using config class
+
+```ts
+import { IRouteConfig, ProxyModuleBuilder } from "@duongtrungnguyen/nestro";
+import { DynamicModule, RequestMethod } from "@nestjs/common";
+
+export class GatewayConfig implements IRouteConfig {
+  configure(builder: ProxyModuleBuilder): DynamicModule {
+    return (
+      builder
+        .httpRoute({
+          // ... options
+        })
+        .wsRoute({
+          // ... options
+        })
+        // ... builder config
+        .build()
+    );
+  }
+}
+```
+
+```ts
+import { ProxyModule } from "@duongtrungnguyen/nestro";
+import { Module } from "@nestjs/common";
+
+import { GatewayConfig } from "@gateway.config";
+
+@Module({
+  imports: [ProxyModule.config(GatewayConfig)],
+})
+export class AppModule {}
 ```
 
 Or using `Proxy` decorator

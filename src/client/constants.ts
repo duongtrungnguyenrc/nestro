@@ -1,4 +1,3 @@
 export const INSTANCE_INFO = "CLIENT_OPTIONS";
 export const SERVER_INFO = "SERVER_INFO";
 export const INSTANCES = "INSTANCES";
-export const PROXY_ROUTES_CONFIG = "PROXY_ROUTES";

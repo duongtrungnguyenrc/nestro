@@ -1,10 +1,16 @@
-import { DynamicModule, MiddlewareConsumer, Module, NestModule, Type, ValueProvider } from "@nestjs/common";
+import {
+  DynamicModule,
+  MiddlewareConsumer,
+  Module,
+  NestMiddleware,
+  NestModule,
+  Provider,
+  Type,
+} from "@nestjs/common";
 
-import { PROXY_ROUTES_CONFIG } from "../client/constants";
+import type { HookExclude, IRoutingConfig, ProxyRouteConfig } from "./types";
+import { ProxyModuleBuilder } from "./proxy-module.builder";
 import { ProxyController } from "./proxy.controller";
-import type { ProxyRouteConfig } from "./types";
-import { ProxyService } from "./proxy.service";
-
 /**
  * Module for configuring and registering proxy routes.
  * Supports HTTP, WebSocket, and Socket.IO with flexible target path configuration.
@@ -12,10 +18,11 @@ import { ProxyService } from "./proxy.service";
 @Module({})
 export class ProxyModule implements NestModule {
   static routes: ProxyRouteConfig[] = [];
-  static globalMiddleware: Type<any>[] = [];
+  static globalMiddlewares: Type<NestMiddleware>[] = [];
+  static providers: Provider[] = [];
 
   /**
-   * Creates a builder for configuring proxy routes and middleware.
+   * Creates a builder for configuring proxy routes and middlewares.
    *
    * @returns A new ProxyModuleBuilder instance.
    */
@@ -23,95 +30,50 @@ export class ProxyModule implements NestModule {
     return new ProxyModuleBuilder();
   }
 
+  static config(ConfigClass: Type<IRoutingConfig>): DynamicModule | Promise<DynamicModule> {
+    const builder = new ProxyModuleBuilder();
+    const instance = new ConfigClass();
+
+    return instance.configure(builder);
+  }
+
   /**
-   * Configures middleware for the proxy module.
+   * Configures middlewares for the proxy module.
    *
-   * @param consumer - The middleware consumer.
+   * @param consumer - The middlewares consumer.
    */
   configure(consumer: MiddlewareConsumer): void {
-    if (ProxyModule.globalMiddleware.length) {
-      consumer.apply(...ProxyModule.globalMiddleware).forRoutes(ProxyController);
+    if (ProxyModule.globalMiddlewares.length) {
+      consumer.apply(...ProxyModule.globalMiddlewares).forRoutes(ProxyController);
     }
 
     ProxyModule.routes.forEach((route) => {
-      if (route.middlewares?.length) {
-        consumer.apply(...route.middlewares).forRoutes(route.route);
+      const middlewareHooks = route.requestHooks?.middlewares;
+      if (!middlewareHooks?.length) return;
+
+      const middlewares: Array<Type<NestMiddleware>> = [];
+      const excludes: HookExclude[] = [];
+
+      middlewareHooks.forEach((hook) => {
+        if (typeof hook === "function") {
+          middlewares.push(hook);
+        } else {
+          middlewares.push(hook.instance);
+          if (hook.excludes?.length) {
+            excludes.push(...hook.excludes);
+          }
+        }
+      });
+
+      if (middlewares.length) {
+        const applied = consumer.apply(...middlewares);
+
+        if (excludes.length) {
+          applied.exclude(...excludes).forRoutes(route.route);
+        } else {
+          applied.forRoutes(route.route);
+        }
       }
     });
-  }
-}
-
-/**
- * Builder class for configuring proxy routes and middleware.
- */
-export class ProxyModuleBuilder {
-  private routes: ProxyRouteConfig[] = [];
-  private middleware: Type<any>[] = [];
-
-  /**
-   * Adds a route configuration.
-   *
-   * @param config - The route configuration, including optional targetPath as string or function.
-   * @returns This builder instance.
-   */
-  route(config: ProxyRouteConfig): this {
-    this.routes.push({
-      ...config,
-      protocol: config.protocol || "http", // Default to HTTP
-    });
-    return this;
-  }
-
-  /**
-   * Adds an HTTP route configuration.
-   *
-   * @param config - The route configuration without protocol.
-   * @returns This builder instance.
-   */
-  httpRoute(config: Omit<ProxyRouteConfig, "protocol">): this {
-    return this.route({ ...config, protocol: "http" });
-  }
-
-  /**
-   * Adds a WebSocket route configuration.
-   *
-   * @param config - The route configuration without protocol.
-   * @returns This builder instance.
-   */
-  wsRoute(config: Omit<ProxyRouteConfig, "protocol">): this {
-    return this.route({ ...config, protocol: "ws" });
-  }
-
-  /**
-   * Adds global middleware to be applied to all routes.
-   *
-   * @param middleware - Middleware classes to apply.
-   * @returns This builder instance.
-   */
-  useGlobalMiddleware(...middleware: Type<any>[]): this {
-    this.middleware.push(...middleware);
-    return this;
-  }
-
-  /**
-   * Builds the proxy module with configured routes and middleware.
-   *
-   * @returns A dynamic module configuration.
-   */
-  build(): DynamicModule {
-    ProxyModule.routes = this.routes;
-    ProxyModule.globalMiddleware = this.middleware;
-
-    const routeConfigProvider: ValueProvider<ProxyRouteConfig[]> = {
-      provide: PROXY_ROUTES_CONFIG,
-      useValue: this.routes,
-    };
-
-    return {
-      module: ProxyModule,
-      controllers: [ProxyController],
-      providers: [routeConfigProvider, ProxyService],
-      exports: [ProxyService],
-    };
   }
 }

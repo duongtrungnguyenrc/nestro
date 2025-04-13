@@ -36,20 +36,13 @@ export function setupOutgoing(
 
   // Configure method and headers
   outgoing.method = req.method || "GET";
-  outgoing.headers = { ...req.headers };
-
-  // Add custom headers
-  if (options.headers) {
-    Object.assign(outgoing.headers, options.headers);
-  }
+  outgoing.headers = req.headers;
 
   // Set SSL options
   if (SSL_PROTOCOL_REGEX.test((target as URL).protocol || "")) {
     outgoing.rejectUnauthorized = options.secure !== undefined ? options.secure : true;
   }
 
-  // Set agent and local address
-  outgoing.agent = options.agent || false;
   outgoing.localAddress = options.localAddress;
 
   // Handle WebSocket/Socket.IO headers

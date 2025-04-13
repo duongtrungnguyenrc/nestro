@@ -2,7 +2,7 @@ import { ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
 import { Request, Response } from "express";
 import { Observable } from "rxjs";
 
-import { ProxyService } from "./proxy.service";
+import { ProxyService } from "./services/proxy.service";
 import { ProxyOptions } from "./types";
 
 @Injectable()
