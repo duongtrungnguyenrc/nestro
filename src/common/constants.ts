@@ -4,3 +4,4 @@ export const DEFAULT_EVICTATION_THRESHOLD = 3;
 export const DEFAULT_PROTOCOL = "http";
 export const DEFAULT_SERVER_PORT = 4444;
 export const DEFAULT_HOST = "localhost";
+export const CLASS_REGEX = /^class\s/;

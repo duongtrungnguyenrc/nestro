@@ -5,6 +5,7 @@ import { URL } from "url";
 
 import { ServiceInstance } from "../common";
 import { ProxyModuleBuilder } from "./proxy-module.builder";
+import { ProxyService } from "./services";
 
 export type HookExclude = {
   path: string;
@@ -44,9 +45,13 @@ export type ProxyRouteConfig = {
   requestHooks?: ProxyRequestHooks;
 };
 
+export type RoutingConfigFunction = (builder: ProxyModuleBuilder) => DynamicModule | Promise<DynamicModule>;
+
 export type IRoutingConfig = {
-  configure(builder: ProxyModuleBuilder): DynamicModule | Promise<DynamicModule>;
+  build: RoutingConfigFunction;
 };
+
+export type IProxyController = Type<ProxyService>;
 
 /**
  * Represents the configuration options for a proxy target.
@@ -106,7 +111,7 @@ export type ProxyOptions = {
   target?: string | URL | ProxyTarget;
   changeOrigin?: boolean;
   xfwd?: boolean;
-  pathRewrite?: Record<string, string>;
+  pathRewrite?: Record<string, string | ((path: string, req: IncomingMessage) => string)>;
   preserveHeaderKeyCase?: boolean;
   buffer?: Buffer | string | Record<string, any>;
   proxyTimeout?: number;

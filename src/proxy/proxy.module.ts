@@ -1,16 +1,9 @@
-import {
-  DynamicModule,
-  MiddlewareConsumer,
-  Module,
-  NestMiddleware,
-  NestModule,
-  Provider,
-  Type,
-} from "@nestjs/common";
+import { DynamicModule, MiddlewareConsumer, Module, NestMiddleware, NestModule, Type } from "@nestjs/common";
 
-import type { HookExclude, IRoutingConfig, ProxyRouteConfig } from "./types";
+import type { HookExclude, IRoutingConfig, ProxyRouteConfig, RoutingConfigFunction } from "./types";
 import { ProxyModuleBuilder } from "./proxy-module.builder";
 import { ProxyController } from "./proxy.controller";
+import { isClass } from "../common";
 /**
  * Module for configuring and registering proxy routes.
  * Supports HTTP, WebSocket, and Socket.IO with flexible target path configuration.
@@ -18,8 +11,7 @@ import { ProxyController } from "./proxy.controller";
 @Module({})
 export class ProxyModule implements NestModule {
   static routes: ProxyRouteConfig[] = [];
-  static globalMiddlewares: Type<NestMiddleware>[] = [];
-  static providers: Provider[] = [];
+  static globalMiddlewares: Array<Type<NestMiddleware>> = [];
 
   /**
    * Creates a builder for configuring proxy routes and middlewares.
@@ -30,11 +22,16 @@ export class ProxyModule implements NestModule {
     return new ProxyModuleBuilder();
   }
 
-  static config(ConfigClass: Type<IRoutingConfig>): DynamicModule | Promise<DynamicModule> {
+  static config(config: Type<IRoutingConfig> | RoutingConfigFunction): DynamicModule | Promise<DynamicModule> {
     const builder = new ProxyModuleBuilder();
-    const instance = new ConfigClass();
 
-    return instance.configure(builder);
+    if (!isClass(config)) {
+      return (config as RoutingConfigFunction)(builder);
+    }
+
+    const instance = new (config as Type<IRoutingConfig>)();
+
+    return instance.build(builder);
   }
 
   /**

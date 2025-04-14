@@ -2,7 +2,7 @@ import { CanActivate, DynamicModule, NestMiddleware, Provider, Type, ValueProvid
 
 import type { ProxyRouteConfig, ProxyRequestHooks, RequestHook } from "./types";
 import { GLOBAL_GUARDS, PROXY_ROUTES_CONFIG } from "./constants";
-import { HttpProxyService, WsProxyService } from "./services";
+import { HttpProxyService, ProxyService, RouteHandleService, WsProxyService } from "./services";
 import { ProxyController } from "./proxy.controller";
 import { ProxyModule } from "./proxy.module";
 
@@ -10,8 +10,8 @@ import { ProxyModule } from "./proxy.module";
  * Builder class for configuring proxy routes and middlewares.
  */
 export class ProxyModuleBuilder {
-  private globalMiddlewares: Type<NestMiddleware>[] = [];
-  private globalGuards: Type<CanActivate>[] = [];
+  private globalMiddlewares: Array<Type<NestMiddleware>> = [];
+  private globalGuards: Array<Type<CanActivate>> = [];
   private routes: ProxyRouteConfig[] = [];
   private providers: Provider[] = [];
 
@@ -61,12 +61,12 @@ export class ProxyModuleBuilder {
    * @param middlewares - Middleware classes to apply.
    * @returns This builder instance.
    */
-  useGlobalMiddleware(...middlewares: Type<NestMiddleware>[]): this {
+  useGlobalMiddleware(...middlewares: Array<Type<NestMiddleware>>): this {
     this.globalMiddlewares.push(...middlewares);
     return this;
   }
 
-  useGlobalGuard(...guards: Type<CanActivate>[]): this {
+  useGlobalGuard(...guards: Array<Type<CanActivate>>): this {
     this.globalGuards.push(...guards);
     return this;
   }
@@ -96,14 +96,13 @@ export class ProxyModuleBuilder {
   build(): DynamicModule {
     ProxyModule.routes = this.routes;
     ProxyModule.globalMiddlewares = this.globalMiddlewares;
-    ProxyModule.providers = this.providers;
 
     const routesConfigProvider: ValueProvider<ProxyRouteConfig[]> = {
       provide: PROXY_ROUTES_CONFIG,
       useValue: this.routes,
     };
 
-    const globalGuardsProvider: ValueProvider<Type<CanActivate>[]> = {
+    const globalGuardsProvider: ValueProvider<Array<Type<CanActivate>>> = {
       provide: GLOBAL_GUARDS,
       useValue: this.globalGuards,
     };
@@ -111,8 +110,16 @@ export class ProxyModuleBuilder {
     return {
       module: ProxyModule,
       controllers: [ProxyController],
-      providers: [routesConfigProvider, globalGuardsProvider, HttpProxyService, WsProxyService, ...this.providers],
-      exports: [HttpProxyService, WsProxyService],
+      providers: [
+        routesConfigProvider,
+        globalGuardsProvider,
+        RouteHandleService,
+        HttpProxyService,
+        WsProxyService,
+        ProxyService,
+        ...this.providers,
+      ],
+      exports: [RouteHandleService, HttpProxyService, WsProxyService, ProxyService],
     };
   }
 }

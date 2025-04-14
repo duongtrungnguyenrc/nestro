@@ -2,21 +2,21 @@ import { IncomingMessage, ServerResponse, request as httpRequest } from "http";
 import { Inject, Injectable, RawBodyRequest } from "@nestjs/common";
 import { request as httpsRequest } from "https";
 import { Request, Response } from "express";
+import { Socket } from "net";
 import { URL } from "url";
 
+import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, ServiceInstance } from "../../common";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
 import { rewriteCookieProperty, setupOutgoing } from "../utils";
 import { LoadBalancingService } from "../../loadbalancing";
-import { ProxyService } from "./proxy.service";
-import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, ServiceInstance } from "../../common";
-import { Socket } from "net";
+import { BaseProxyService } from "./base-proxy.service";
 
 /**
  * Service responsible for proxying HTTP and WebSocket requests, including Socket.IO support.
  * Supports optional service-based load balancing or direct target usage.
  */
 @Injectable()
-export class HttpProxyService extends ProxyService {
+export class HttpProxyService extends BaseProxyService {
   constructor(@Inject(LoadBalancingService) loadBalancingService: LoadBalancingService) {
     super(loadBalancingService);
   }
@@ -47,18 +47,18 @@ export class HttpProxyService extends ProxyService {
         // Use load balancing with service
         await this.loadBalancingService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceHttpUrl);
-          debugLog(ProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
+          debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
 
           const proxyOptions: ProxyOptions = { ...proxyOptionsBase, target: targetUrl };
-          await this.executeProxy(req, res, proxyOptions, this.processHttp.bind(this));
+          await this.executeProxy(req, res, proxyOptions, this.handleProxy.bind(this));
         });
       } else if (routeConfig.target) {
         // Use direct target without load balancing
         const targetUrl = this.resolveDirectTarget(routeConfig.target);
-        debugLog(ProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
+        debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
 
         const proxyOptions: ProxyOptions = { ...proxyOptionsBase, target: targetUrl };
-        await this.executeProxy(req, res, proxyOptions, this.processHttp.bind(this));
+        await this.executeProxy(req, res, proxyOptions, this.handleProxy.bind(this));
       } else {
         throw new Error("Either service or target must be provided in routeConfig");
       }
@@ -75,7 +75,7 @@ export class HttpProxyService extends ProxyService {
    * @param options - Proxy configuration options.
    * @param callbacks - Optional callbacks for lifecycle events.
    */
-  private processHttp(
+  handleProxy(
     req: IncomingMessage,
     res: ServerResponse,
     options: ProxyOptions = {},
@@ -120,6 +120,7 @@ export class HttpProxyService extends ProxyService {
     const requestAgent = targetProtocol === "https" ? httpsRequest : httpRequest;
 
     const proxyOptions = setupOutgoing({}, options, req);
+
     const proxyReq = requestAgent(proxyOptions);
 
     proxyReq.on("socket", (socket) => callbacks.onProxyReq?.(proxyReq, req, res, socket));
@@ -129,7 +130,7 @@ export class HttpProxyService extends ProxyService {
     }
 
     req.on("aborted", () => {
-      debugLog(ProxyService.name, "Client request aborted");
+      debugLog(HttpProxyService.name, "Client request aborted");
       proxyReq.destroy();
     });
 
@@ -150,7 +151,7 @@ export class HttpProxyService extends ProxyService {
           try {
             res.setHeader(key, value);
           } catch (err) {
-            debugWarn(ProxyService.name, `Error setting header ${key}: ${err.message}`);
+            debugWarn(HttpProxyService.name, `Error setting header ${key}: ${err.message}`);
           }
         }
       }
@@ -160,11 +161,11 @@ export class HttpProxyService extends ProxyService {
 
       proxyRes.on("end", () => {
         callbacks.onEnd?.(req, res, proxyRes);
-        debugLog(ProxyService.name, `Proxy completed - ${proxyRes.statusCode}`);
+        debugLog(HttpProxyService.name, `Proxy completed - ${proxyRes.statusCode}`);
       });
 
       proxyRes.on("error", (err) => {
-        debugError(ProxyService.name, `Proxy response error: ${err.message}`);
+        debugError(HttpProxyService.name, `Proxy response error: ${err.message}`);
         if (!res.headersSent) {
           res.writeHead(502, { "Content-Type": "text/plain" });
           res.end(`Proxy Error: ${err.message}`);
@@ -193,7 +194,7 @@ export class HttpProxyService extends ProxyService {
    * @param req - The incoming HTTP request.
    * @returns The buffer or undefined.
    */
-  private getRequestBuffer(req: RawBodyRequest<Request>): Buffer | string | undefined {
+  getRequestBuffer(req: RawBodyRequest<Request>): Buffer | string | undefined {
     if (req.rawBody) {
       return req.rawBody;
     }
@@ -246,13 +247,13 @@ export class HttpProxyService extends ProxyService {
     onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void
   ): (err: Error) => void {
     return (err: Error): void => {
-      if ((req.socket as Socket).destroyed && err.message.includes("ECONNRESET")) {
-        debugWarn(ProxyService.name, `Connection reset by peer: ${err.message}`);
+      if (req.socket.destroyed && err.message.includes("ECONNRESET")) {
+        debugWarn(HttpProxyService.name, `Connection reset by peer: ${err.message}`);
         proxyReq.destroy();
         return;
       }
 
-      debugError(ProxyService.name, `Proxy error: ${err.message}`);
+      debugError(HttpProxyService.name, `Proxy error: ${err}`);
       this.handleError(err, req, res, target, onError);
     };
   }

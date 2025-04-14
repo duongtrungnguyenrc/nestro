@@ -1,17 +1,18 @@
 import { Injectable, Type, ExecutionContext, RequestMethod, CanActivate, Inject } from "@nestjs/common";
 import { lastValueFrom, Observable } from "rxjs";
 import { Request, Response } from "express";
+import { ModuleRef } from "@nestjs/core";
+import { match } from "path-to-regexp";
 import * as path from "path";
 
 import { HookExclude, ProxyRouteConfig, RequestHook } from "../types";
 import { GLOBAL_GUARDS, PROXY_ROUTES_CONFIG } from "../constants";
-import { ModuleRef } from "@nestjs/core";
 
 @Injectable()
 export class RouteHandleService {
   constructor(
     @Inject(PROXY_ROUTES_CONFIG) private readonly routesConfig: ProxyRouteConfig[],
-    @Inject(GLOBAL_GUARDS) private readonly globalGuards: Type<CanActivate>[],
+    @Inject(GLOBAL_GUARDS) private readonly globalGuards: Array<Type<CanActivate>>,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef
   ) {}
 
@@ -22,7 +23,7 @@ export class RouteHandleService {
    * @returns The matching route configuration, or undefined if none found.
    */
   findMatchingRoute(path: string): ProxyRouteConfig | undefined {
-    return this.routesConfig.find((config) => new RegExp(config.route).test(path));
+    return this.routesConfig.find((config) => match(config.route)(path));
   }
 
   /**
@@ -87,15 +88,5 @@ export class RouteHandleService {
     }
 
     return result;
-  }
-
-  /**
-   * Determines if the request is a WebSocket upgrade request.
-   *
-   * @param req - The incoming request.
-   * @returns True if the request is for WebSocket, false otherwise.
-   */
-  isWebSocketRequest(req: Request): boolean {
-    return !!req.headers.upgrade && req.headers.upgrade.toLowerCase() === "websocket";
   }
 }

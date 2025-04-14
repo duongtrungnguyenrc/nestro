@@ -2,8 +2,10 @@ import { IncomingMessage } from "http";
 import { Socket } from "net";
 import { URL } from "url";
 
-import { SSL_PROTOCOL_REGEX, UPGRADE_HEADER_REGEX, WEBSOCKET_UPGRADE_REGEX, SOCKET_IO_PATH_REGEX } from "./constants";
+import { SSL_PROTOCOL_REGEX, UPGRADE_HEADER_REGEX, WEBSOCKET_UPGRADE_REGEX, SOCKET_IO_PATH_REGEX, WEBSOCKET_UPGRADE_HEADER } from "./constants";
 import { OutgoingOptions, ProxyOptions, ProxyTarget } from "./types";
+import { Request } from "express";
+import { ProxyService } from "./services";
 
 /**
  * Configures outgoing options for a proxy request.
@@ -48,8 +50,11 @@ export function setupOutgoing(
   // Handle WebSocket/Socket.IO headers
   configureConnectionHeader(outgoing, req);
 
+  const originalPath = req.url || "/";
+  const rewrittenPath = rewritePath(originalPath, req, options);
+
   // Build path with query string
-  outgoing.path = buildPath(target, req.url || "/", options);
+  outgoing.path = buildPath(target, rewrittenPath, options);
 
   // Set host header for changeOrigin
   if (options.changeOrigin) {
@@ -138,38 +143,63 @@ function configureConnectionHeader(outgoing: OutgoingOptions, req: IncomingMessa
  * @param options - Proxy configuration options.
  * @returns The constructed path.
  */
-function buildPath(target: URL | ProxyTarget, reqUrl: string, options: ProxyOptions): string {
-  // Get target path
+function buildPath(target: URL | ProxyTarget, rewrittenPath: string, options: ProxyOptions): string {
   let targetPath = "";
+
   if (options.prependPath !== false) {
     targetPath = (target as ProxyTarget).path || (target as URL).pathname || "";
   }
 
-  // Parse request URL
-  let outgoingPath = "";
-  let queryString = "";
-  if (!options.toProxy) {
-    const parsedUrl = new URL(reqUrl, "http://localhost");
-    outgoingPath = parsedUrl.pathname || "";
-    queryString = parsedUrl.search || ""; // Preserve Socket.IO query (e.g., ?EIO=4)
-  } else {
-    outgoingPath = reqUrl || "/";
-  }
+  const url = new URL(rewrittenPath, "http://localhost");
+  const pathname = options.toProxy ? rewrittenPath : url.pathname;
+  const queryString = options.toProxy ? "" : url.search;
 
-  // Apply ignorePath
-  if (options.ignorePath) {
-    outgoingPath = "";
-  }
+  const fullPath = joinPaths(targetPath, pathname);
+  return fullPath + queryString;
+}
 
-  // Apply pathRewrite
-  if (options.pathRewrite) {
-    for (const pattern in options.pathRewrite) {
-      outgoingPath = outgoingPath.replace(new RegExp(pattern), options.pathRewrite[pattern]);
+/**
+ * Rewrites the given path based on the provided proxy options.
+ *
+ * @param path - The original request path to be rewritten.
+ * @param req - The incoming HTTP request object.
+ * @param options - The proxy options containing rewrite rules and flags.
+ * @returns The rewritten path, or an empty string if `ignorePath` is true, 
+ *          or the original path if no rewrite rules match.
+ *
+ * @remarks
+ * - If `options.ignorePath` is set to `true`, the function returns an empty string.
+ * - If `options.pathRewrite` is not provided, the function returns the original path.
+ * - If `options.pathRewrite` contains matching patterns, the function applies the first matching rewrite rule.
+ * - Rewrite rules can be either a string replacement or a function that generates the replacement.
+ *
+ * @example
+ * ```typescript
+ * const options: ProxyOptions = {
+ *   ignorePath: false,
+ *   pathRewrite: {
+ *     '^/api': '/backend',
+ *     '^/old-route': (path, req) => `/new-route${path.substring(9)}`
+ *   }
+ * };
+ * 
+ * const rewrittenPath = rewritePath('/api/users', req, options);
+ * console.log(rewrittenPath); // Output: '/backend/users'
+ * ```
+ */
+function rewritePath(path: string, req: IncomingMessage, options: ProxyOptions): string {
+  if (options.ignorePath) return "";
+
+  if (!options.pathRewrite) return path;
+
+  for (const [pattern, replacement] of Object.entries(options.pathRewrite)) {
+    const regex = new RegExp(pattern);
+    if (regex.test(path)) {
+      return typeof replacement === "function" ? replacement(path, req) : path.replace(regex, replacement);
     }
   }
 
-  // Join paths and preserve query string
-  return joinPaths(targetPath, outgoingPath) + queryString;
+  return path;
 }
 
 /**
@@ -281,4 +311,22 @@ export function rewriteCookieProperty(
  */
 export function isSocketIORequest(req: IncomingMessage): boolean {
   return !!req.url && SOCKET_IO_PATH_REGEX.test(req.url);
+}
+
+/**
+ * Determines if the given HTTP request is a WebSocket upgrade request.
+ *
+ * @param req - The HTTP request object to check.
+ * @returns `true` if the request is a WebSocket upgrade request, otherwise `false`.
+ */
+export function isSocketRequest(req: Request): boolean {
+  return !!req.headers.upgrade && req.headers.upgrade.toLowerCase() === WEBSOCKET_UPGRADE_HEADER;
+}
+
+export abstract class ProxyTemplate {
+  protected _proxyService: ProxyService;
+
+  constructor(_proxyService: ProxyService) {
+    this._proxyService = _proxyService;
+  }
 }

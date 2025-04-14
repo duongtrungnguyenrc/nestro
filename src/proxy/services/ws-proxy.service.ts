@@ -1,4 +1,4 @@
-import { IncomingMessage, request as httpRequest } from "http";
+import { IncomingMessage, ServerResponse, request as httpRequest } from "http";
 import { Inject, Injectable, RawBodyRequest } from "@nestjs/common";
 import { request as httpsRequest } from "https";
 import { Request, Response } from "express";
@@ -8,15 +8,15 @@ import { URL } from "url";
 import { buildInstanceWsUrl, debugError, debugLog, debugWarn, ServiceInstance } from "../../common";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
 import { LoadBalancingService } from "../../loadbalancing";
+import { BaseProxyService } from "./base-proxy.service";
 import { setupOutgoing, setupSocket } from "../utils";
-import { ProxyService } from "./proxy.service";
 
 /**
  * Service responsible for proxying HTTP and WebSocket requests, including Socket.IO support.
  * Supports optional service-based load balancing or direct target usage.
  */
 @Injectable()
-export class WsProxyService extends ProxyService {
+export class WsProxyService extends BaseProxyService {
   constructor(@Inject(LoadBalancingService) loadBalancingService: LoadBalancingService) {
     super(loadBalancingService);
   }
@@ -44,20 +44,18 @@ export class WsProxyService extends ProxyService {
         // Use load balancing with service
         await this.loadBalancingService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceWsUrl);
-          debugLog(ProxyService.name, `Proxying WebSocket request from ${originalUrl} to ${targetUrl}`);
+          debugLog(WsProxyService.name, `Proxying WebSocket request from ${originalUrl} to ${targetUrl}`);
 
           const proxyOptions: ProxyOptions = { ...proxyOptionsBase, target: targetUrl };
-          await this.executeProxy(req, res, proxyOptions, (r, _, o) =>
-            this.processWs(r, req.socket, Buffer.from(""), o)
-          );
+          await this.executeProxy(req, res, proxyOptions, this.handleProxy.bind(this));
         });
       } else if (routeConfig.target) {
         // Use direct target without load balancing
         const targetUrl = this.resolveDirectTarget(routeConfig.target);
-        debugLog(ProxyService.name, `Proxying WebSocket request from ${originalUrl} to ${targetUrl}`);
+        debugLog(WsProxyService.name, `Proxying WebSocket request from ${originalUrl} to ${targetUrl}`);
 
         const proxyOptions: ProxyOptions = { ...proxyOptionsBase, target: targetUrl };
-        await this.executeProxy(req, res, proxyOptions, (r, s, o) => this.processWs(r, req.socket, Buffer.from(""), o));
+        await this.executeProxy(req, res, proxyOptions, this.handleProxy.bind(this));
       } else {
         throw new Error("Either service or target must be provided in routeConfig");
       }
@@ -75,17 +73,19 @@ export class WsProxyService extends ProxyService {
    * @param options - Proxy configuration options.
    * @param callbacks - Optional callbacks for lifecycle events.
    */
-  private processWs(
+  handleProxy(
     req: IncomingMessage,
-    socket: Socket,
-    head: Buffer,
+    _: ServerResponse,
     options: ProxyOptions = {},
     callbacks: ProxyCallbacks = {}
   ): void {
+    const socket = req.socket;
+    const head = Buffer.from("");
+
     try {
       const normalizedOptions = this.normalizeOptions(options, req.url || "/");
 
-      debugLog(ProxyService.name, `Proxying WebSocket to: ${normalizedOptions.target}`);
+      debugLog(WsProxyService.name, `Proxying WebSocket to: ${normalizedOptions.target}`);
 
       if (req.method !== "GET" || !req.headers.upgrade || req.headers.upgrade.toLowerCase() !== "websocket") {
         socket.destroy();
@@ -95,7 +95,7 @@ export class WsProxyService extends ProxyService {
       this.addForwardedHeaders(req, normalizedOptions.xfwd, true);
       this.streamRequest(req, socket, head, normalizedOptions, callbacks);
     } catch (err) {
-      debugError(ProxyService.name, `WebSocket setup error: ${err.message}`);
+      debugError(WsProxyService.name, `WebSocket setup error: ${err.message}`);
       this.handleError(err as Error, req, socket, undefined, callbacks.onError);
       socket.end();
     }
@@ -132,6 +132,7 @@ export class WsProxyService extends ProxyService {
     };
 
     setupSocket(socket);
+
     if (head && head.length) socket.unshift(head);
 
     const target = options.target as URL | ProxyTarget;
@@ -142,7 +143,7 @@ export class WsProxyService extends ProxyService {
     callbacks.onProxyReqWs?.(proxyReq, req, socket, options, head);
 
     const onOutgoingError = (err: Error) => {
-      debugError(ProxyService.name, `WebSocket proxy error: ${err.message}`);
+      debugError(WsProxyService.name, `WebSocket proxy error: ${err.message}`);
       this.handleError(err, req, socket, undefined, callbacks.onError);
       socket.end();
     };
@@ -151,7 +152,7 @@ export class WsProxyService extends ProxyService {
 
     proxyReq.on("response", (proxyRes: IncomingMessage) => {
       if (!proxyRes.headers.upgrade || proxyRes.headers.upgrade.toLowerCase() !== "websocket") {
-        debugWarn(ProxyService.name, "WebSocket upgrade failed, falling back to HTTP");
+        debugWarn(WsProxyService.name, "WebSocket upgrade failed, falling back to HTTP");
         socket.write(
           createHttpHeader(
             `HTTP/${proxyRes.httpVersion} ${proxyRes.statusCode} ${proxyRes.statusMessage || ""}`,
@@ -163,7 +164,7 @@ export class WsProxyService extends ProxyService {
     });
 
     proxyReq.on("upgrade", (proxyRes: IncomingMessage, proxySocket: Socket, proxyHead: Buffer) => {
-      debugLog(ProxyService.name, "WebSocket upgrade successful");
+      debugLog(WsProxyService.name, "WebSocket upgrade successful");
 
       proxySocket.on("error", onOutgoingError);
       proxySocket.on("end", () => callbacks.onClose?.(proxyRes, proxySocket, proxyHead));
