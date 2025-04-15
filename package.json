@@ -1,7 +1,7 @@
 {
   "name": "@duongtrungnguyen/nestro",
   "author": "Duong Trung Nguyen",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Service registry for Nest JS",
   "license": "MIT",
   "engines": {
@@ -33,15 +33,17 @@
     "prepublishOnly": "npm run clean && npm run build",
     "lint": "eslint src --ext .ts,.tsx",
     "link-local": "npm link",
-    "start:dev": "nest start --watch"
+    "start:dev": "nest start --watch",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
   },
   "keywords": [
     "nest",
     "nestjs",
     "microservices",
-    "service registry",
-    "service discovery",
-    "load balancing"
+    "platform-express",
+    "service-registry",
+    "service-discovery",
+    "load-balancing"
   ],
   "peerDependencies": {
     "@nestjs/common": ">=10.0.0",
