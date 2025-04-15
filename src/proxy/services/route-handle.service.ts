@@ -3,17 +3,16 @@ import { lastValueFrom, Observable } from "rxjs";
 import { Request, Response } from "express";
 import { ModuleRef } from "@nestjs/core";
 import { match } from "path-to-regexp";
-import * as path from "path";
 
-import { HookExclude, ProxyRouteConfig, RequestHook } from "../types";
+import { HookRoute, ProxyRouteConfig, RequestHook } from "../types";
 import { GLOBAL_GUARDS, PROXY_ROUTES_CONFIG } from "../constants";
 
 @Injectable()
 export class RouteHandleService {
   constructor(
-    @Inject(PROXY_ROUTES_CONFIG) private readonly routesConfig: ProxyRouteConfig[],
+    @Inject(PROXY_ROUTES_CONFIG) private readonly routesConfig: Array<ProxyRouteConfig>,
     @Inject(GLOBAL_GUARDS) private readonly globalGuards: Array<Type<CanActivate>>,
-    @Inject(ModuleRef) private readonly moduleRef: ModuleRef
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
 
   /**
@@ -35,43 +34,59 @@ export class RouteHandleService {
    * @returns True if all guards pass, false otherwise.
    */
   async checkGuards(guards: Array<RequestHook<CanActivate>>, req: Request, res: Response): Promise<boolean> {
-    const allGuards: Array<RequestHook<CanActivate>> = [...this.globalGuards, ...guards];
+    const allGuards = [...this.globalGuards, ...guards];
 
-    const resolveGuards = async () => {
-      for (const [index, guard] of allGuards.entries()) {
-        if (typeof guard === "function") {
-          return await this.executeGuard(guard, req, res);
-        }
+    for (let i = 0; i < allGuards.length; i++) {
+      const guard = allGuards[i];
 
-        const isGlobalGuard = index < this.globalGuards.length;
+      const isGlobalGuard = i < this.globalGuards.length;
 
-        if (isGlobalGuard || this.shouldApplyHook(guard.excludes, req)) {
-          return await this.executeGuard(guard.instance, req, res);
-        }
+      const shouldRun = typeof guard === "function" ? true : isGlobalGuard || this.shouldApplyHook(req, guard.includes, guard.excludes);
+
+      if (!shouldRun) continue;
+
+      const instance = typeof guard === "function" ? guard : guard.instance;
+      const result = await this.executeGuard(instance, req, res);
+
+      if (!result) {
+        res.status(401).json({ message: "Unauthorized" });
+        return false;
       }
-
-      return true;
-    };
-
-    const result = await resolveGuards();
-
-    if (!result) {
-      res.status(403).json({ message: "Forbidden" });
     }
 
-    return result;
+    return true;
   }
 
-  shouldApplyHook(excludes: HookExclude[] = [], req: Request): boolean {
-    return !excludes.some((exclude) => {
-      return (
-        new RegExp(exclude.path).test(path.join(req.url)) &&
-        (exclude.method === RequestMethod[req.method] || exclude.method === RequestMethod.ALL)
-      );
-    });
+  /**
+   * Determines whether a hook should be applied to the given request based on inclusion and exclusion rules.
+   *
+   * @param req - The incoming HTTP request object.
+   * @param includes - An optional array of routes to include. If provided, the hook will only be applied
+   *                   if the request matches one of these routes.
+   * @param excludes - An optional array of routes to exclude. If provided, the hook will not be applied
+   *                   if the request matches one of these routes.
+   * @returns A boolean indicating whether the hook should be applied to the request.
+   */
+  private shouldApplyHook(req: Request, includes?: HookRoute[], excludes?: HookRoute[]): boolean {
+    const method = RequestMethod[req.method];
+
+    const isMatch = (routes?: HookRoute[], defaultV: boolean = true) =>
+      routes?.some((route) => (route.method === method || route.method === RequestMethod.ALL) && match(route.path)(req.url)) ?? defaultV;
+
+    return isMatch(includes) && !isMatch(excludes, false);
   }
 
-  async executeGuard(Guard: Type<CanActivate>, request: Request, response: Response): Promise<boolean> {
+  /**
+   * Executes a guard by resolving it from the module reference and invoking its `canActivate` method.
+   * Handles both synchronous and asynchronous results, including observables.
+   *
+   * @template Guard - The type of the guard to be executed, which must implement the `CanActivate` interface.
+   * @param Guard - The class type of the guard to be resolved and executed.
+   * @param request - The HTTP request object to be passed to the guard's execution context.
+   * @param response - The HTTP response object to be passed to the guard's execution context.
+   * @returns A promise that resolves to `true` if the guard allows activation, or `false` otherwise.
+   */
+  private async executeGuard(Guard: Type<CanActivate>, request: Request, response: Response): Promise<boolean> {
     const guard = await this.moduleRef.resolve(Guard);
     const context: ExecutionContext = {
       switchToHttp: () => ({ getRequest: () => request, getResponse: () => response }),

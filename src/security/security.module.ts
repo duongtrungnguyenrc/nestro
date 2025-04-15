@@ -13,10 +13,8 @@ export class SecurityModule {
       provide: KEY_SERVICE_OPTIONS,
       useValue: {
         initKeys: options?.initKeys ?? false,
-        privateKeyPath:
-          options?.privateKeyPath?.replace(/^~\//, `${os.homedir()}/`) ?? path.join(__dirname, "private.pem"),
-        publicKeyPath:
-          options?.publicKeyPath?.replace(/^~\//, `${os.homedir()}/`) ?? path.join(__dirname, "public.pem"),
+        privateKeyPath: options?.privateKeyPath?.replace(/^~\//, `${os.homedir()}/`) ?? path.join(__dirname, "private.pem"),
+        publicKeyPath: options?.publicKeyPath?.replace(/^~\//, `${os.homedir()}/`) ?? path.join(__dirname, "public.pem"),
       },
     };
 

@@ -1,9 +1,10 @@
 import { CanActivate, DynamicModule, NestMiddleware, Provider, Type, ValueProvider } from "@nestjs/common";
 
+import { HttpProxyService, ProxyService, RouteHandleService, WsProxyService } from "./services";
 import type { ProxyRouteConfig, ProxyRequestHooks, RequestHook } from "./types";
 import { GLOBAL_GUARDS, PROXY_ROUTES_CONFIG } from "./constants";
-import { HttpProxyService, ProxyService, RouteHandleService, WsProxyService } from "./services";
 import { ProxyController } from "./proxy.controller";
+import { DEFAULT_PROTOCOL } from "../common";
 import { ProxyModule } from "./proxy.module";
 
 /**
@@ -12,8 +13,8 @@ import { ProxyModule } from "./proxy.module";
 export class ProxyModuleBuilder {
   private globalMiddlewares: Array<Type<NestMiddleware>> = [];
   private globalGuards: Array<Type<CanActivate>> = [];
-  private routes: ProxyRouteConfig[] = [];
-  private providers: Provider[] = [];
+  private routes: Array<ProxyRouteConfig> = [];
+  private providers: Array<Provider> = [];
 
   /**
    * Adds a route configuration.
@@ -24,7 +25,7 @@ export class ProxyModuleBuilder {
   route(config: ProxyRouteConfig): this {
     this.routes.push({
       ...config,
-      protocol: config.protocol || "http", // Default to HTTP
+      protocol: config.protocol || DEFAULT_PROTOCOL, // Default to HTTP
     });
 
     // Register providers from request hooks if any
@@ -97,7 +98,7 @@ export class ProxyModuleBuilder {
     ProxyModule.routes = this.routes;
     ProxyModule.globalMiddlewares = this.globalMiddlewares;
 
-    const routesConfigProvider: ValueProvider<ProxyRouteConfig[]> = {
+    const routesConfigProvider: ValueProvider<Array<ProxyRouteConfig>> = {
       provide: PROXY_ROUTES_CONFIG,
       useValue: this.routes,
     };
@@ -110,15 +111,7 @@ export class ProxyModuleBuilder {
     return {
       module: ProxyModule,
       controllers: [ProxyController],
-      providers: [
-        routesConfigProvider,
-        globalGuardsProvider,
-        RouteHandleService,
-        HttpProxyService,
-        WsProxyService,
-        ProxyService,
-        ...this.providers,
-      ],
+      providers: [routesConfigProvider, globalGuardsProvider, RouteHandleService, HttpProxyService, WsProxyService, ProxyService, ...this.providers],
       exports: [RouteHandleService, HttpProxyService, WsProxyService, ProxyService],
     };
   }

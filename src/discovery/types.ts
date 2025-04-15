@@ -14,7 +14,6 @@ export type LoadBalancingStrategy =
   | "weighted-round-robin" // Distributes requests based on instance weights
   | "response-time"; // Selects the instance with the fastest response time
 
-
 /**
  * Configuration options for load balancing.
  *

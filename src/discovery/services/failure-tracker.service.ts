@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 
-import { debugWarn, ServiceInstance } from "../common";
+import { debugWarn, ServiceInstance } from "../../common";
 
 @Injectable()
-export class TemporaryFailureTracker {
+export class FailureTrackerService {
   private failedInstances: Map<string, number> = new Map(); // instanceId -> timestamp when it failed
   private readonly failureDuration: number = 30000; // How long to consider an instance as failed (30 seconds)
 
@@ -13,7 +13,7 @@ export class TemporaryFailureTracker {
   markAsFailed(instance: ServiceInstance): void {
     const instanceId = this.getInstanceId(instance);
     this.failedInstances.set(instanceId, Date.now() + 30000);
-    debugWarn(TemporaryFailureTracker.name, `Instance ${instanceId} marked as temporarily failed`);
+    debugWarn(FailureTrackerService.name, `Instance ${instanceId} marked as temporarily failed`);
   }
 
   /**

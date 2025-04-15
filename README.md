@@ -18,11 +18,11 @@ Nestro is a powerful service registry designed for NestJS applications. It strea
 
 **1. Features**
 
-- **HTTP Pooling & Service Registration:**  
+- **Service registration:**  
   Services register themselves via HTTP requests. Regular heartbeats are sent to ensure that the registry remains updated with active instances.
-- **Dynamic Load Balancing:**  
+- **Dynamic load balancing and service discovery:**  
   Distribute incoming requests using flexible strategies such as round-robin, random, or least-connections for optimal performance.
-- **Robust Security:**  
+- **Robust security:**  
   Integrates key management and request validation to secure service communications.
 - **Modular Architecture:**  
   Built with NestJS, Nestro promotes reusability and clean organization, making it easy to extend functionalities.
@@ -31,23 +31,18 @@ Nestro is a powerful service registry designed for NestJS applications. It strea
 
 **2. How it works?**
 
-**_HTTP Pooling & Service Registration_**
+**Service registration:**
 
-- **Service Registration:**  
+- **Bootstrap:**  
   Each microservice registers with the Nestro server upon startup by sending an HTTP POST request. The registration includes critical information such as the service name, host, port, and security details.
-- **Heartbeat Mechanism:**  
+- **Storage:**  
+  Nestro stores this information in its internal registry, making the service discoverable for other clients or services.
+- **Heartbeat:**  
   To maintain an accurate registry, each service sends regular heartbeat requests. This mechanism allows the server to track active instances and remove those that no longer respond.
-- **HTTP Pooling:**  
-  When a client makes a request, Nestro pools the available service instances based on the configured load balancing strategy. This ensures that traffic is distributed evenly and efficiently among all registered services.
 
-**_Dependency Dashboard_**
+**Service discovery:**
 
-- **Real-Time Monitoring:**  
-  The integrated dashboard displays the status of every registered service instance, including metrics like instance count, registration time, and registration status.
-- **Dependency Management:**  
-  Easily visualize and manage service dependencies. The dashboard highlights relationships between services, allowing for quick identification of potential bottlenecks or scalability issues.
-- **Administrative Actions:**  
-  Administrators can perform actions such as deregistering services directly from the dashboard, streamlining maintenance and troubleshooting processes.
+- When a client makes a request, Nestro will discover the available service instances based on the configured load balancing strategy. This ensures that traffic is distributed evenly and efficiently among all registered services.
 
 ---
 
@@ -247,11 +242,13 @@ export class AppModule {}
 Or using `Proxy` decorator
 
 ```ts
+import { Proxy, ProxyTemplate, ProxyService } from "@duongtrungnguyen/nestro";
 import { Controller, Get, Param } from "@nestjs/common";
-import { Proxy } from "@duongtrungnguyen/nestro";
 
 @Controller("api")
-export class ApiController {
+export class ApiController extends ProxyTemplate {
+  constructor(proxyService: ProxyService /* Inject from proxy module */) {}
+
   @Get("users")
   @Proxy({
     target: "https://api.example.com",
@@ -275,19 +272,14 @@ export class ApiController {
 For communication between multiple services. We using communication template to get best instance for communicate
 
 ```ts
-import {
-  CommunicateRequest,
-  createCommunicationTemplate,
-  LoadBalancingService,
-  ServiceInstance,
-} from "@duongtrungnguyen/nestro";
+import { CommunicateRequest, createCommunicationTemplate, DiscoveryService, ServiceInstance } from "@duongtrungnguyen/nestro";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class UserService extends createCommunicationTemplate("user") {
-  constructor(loadBalancingService: LoadBalancingService /* Load balancing service is global dependency*/) {
+  constructor(discoveryService: DiscoveryService /* Load balancing service is global dependency*/) {
     // It is used to get the instance of the service
-    super(loadBalancingService);
+    super(discoveryService);
   }
 
   @CommunicateRequest()

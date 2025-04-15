@@ -37,5 +37,7 @@ export async function createNestroServer(
     registerHandlebarsHelpers();
   }
 
+  app.enableShutdownHooks();
+
   return app;
 }

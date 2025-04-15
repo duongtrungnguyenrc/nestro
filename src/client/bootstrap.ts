@@ -26,6 +26,8 @@ export async function createNestroApplication(
 
   const nestroApp: NestroApplication = Object.create(Object.getPrototypeOf(app), Object.getOwnPropertyDescriptors(app));
 
+  nestroApp.enableShutdownHooks();
+
   nestroApp.listen = async () => {
     const server = await app.listen(config.client.port);
     debugLog("Nestro", "Nestro application initial success");

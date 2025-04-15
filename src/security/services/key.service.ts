@@ -65,7 +65,7 @@ export class KeyService {
         key: publicKey,
         padding: constants.RSA_PKCS1_PSS_PADDING,
       },
-      Buffer.from(signature, "base64")
+      Buffer.from(signature, "base64"),
     );
   }
 }

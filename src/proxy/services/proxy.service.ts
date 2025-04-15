@@ -12,7 +12,7 @@ export class ProxyService {
   constructor(
     @Inject(HttpProxyService) private readonly httpProxyService: HttpProxyService,
     @Inject(WsProxyService) private readonly wsProxyService: WsProxyService,
-    @Inject(RouteHandleService) private readonly routeHandleService: RouteHandleService
+    @Inject(RouteHandleService) private readonly routeHandleService: RouteHandleService,
   ) {}
 
   async execute(req: RawBodyRequest<Request>, res: Response): Promise<void> {

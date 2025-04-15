@@ -1,5 +1,5 @@
-import { ILoadBalancer } from "../interfaces";
 import { ServiceInstance } from "../../common";
+import { ILoadBalancer } from "../interfaces";
 
 /**
  * Response Time load balancing strategy

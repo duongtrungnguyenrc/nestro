@@ -1,13 +1,22 @@
 import { type ServiceInstance } from "../../common";
+import { DiscoveryService } from "../../discovery";
+import { CommunicationTemplate } from "../utils";
 
 export function CommunicateRequest(serviceName?: string) {
   return function (_: any, __: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
-      return this?.service.executeWithRetry(serviceName || this.targetService, async (instance: ServiceInstance) => {
-        return await originalMethod.apply(this, [instance, ...args]);
-      });
+      if (!this._discoveryService && !(this._discoveryService instanceof DiscoveryService)) {
+        throw new Error("Missing _discoveryService on class. Ensure it extends CommunicationTemplate.");
+      }
+
+      return (this as CommunicationTemplate)?._discoveryService.executeWithRetry(
+        serviceName || this.targetService,
+        async (instance: ServiceInstance) => {
+          return await originalMethod.apply(this, [instance, ...args]);
+        }
+      );
     };
 
     return descriptor;

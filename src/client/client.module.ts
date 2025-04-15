@@ -3,7 +3,7 @@ import { Module, DynamicModule, ValueProvider } from "@nestjs/common";
 import { DEFAULT_HOST, DEFAULT_SERVER_PORT, getHttpSecureProtocol, type ServiceInstance } from "../common";
 import type { NestroClientConfig, ServerInfo, InstanceInfo } from "./types";
 import { INSTANCE_INFO, INSTANCES, SERVER_INFO } from "./constants";
-import { LoadBalancingModule } from "../loadbalancing";
+import { DiscoveryModule } from "../discovery";
 import { SecurityModule } from "../security";
 import { ClientService } from "./services";
 
@@ -35,12 +35,9 @@ export class ClientModule {
 
     return {
       module: ClientModule,
-      imports: [
-        SecurityModule.register(config.security || {}),
-        LoadBalancingModule.register(config.loadbalancing || {}),
-      ],
+      imports: [SecurityModule.register(config.security || {}), DiscoveryModule.register(config.loadbalancing || {})],
       providers: [instanceOptionsProvider, nestroServerOptionsProvider, instancesProvider, ClientService],
-      exports: [SERVER_INFO, INSTANCE_INFO, LoadBalancingModule],
+      exports: [SERVER_INFO, INSTANCE_INFO, DiscoveryModule],
       global: true,
     };
   }

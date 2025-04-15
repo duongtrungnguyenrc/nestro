@@ -1,16 +1,16 @@
 import {
   CommunicateRequest,
   createCommunicationTemplate,
-  LoadBalancingService,
+  DiscoveryService,
   ServiceInstance,
 } from "@duongtrungnguyen/nestro";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class CommunicationService extends createCommunicationTemplate("user") {
-  constructor(loadBalancingService: LoadBalancingService /* Load balancing service is global dependency*/) {
+  constructor(discoveryService: DiscoveryService /* Load balancing service is global dependency*/) {
     // It is used to get the instance of the service
-    super(loadBalancingService);
+    super(discoveryService);
   }
 
   @CommunicateRequest()

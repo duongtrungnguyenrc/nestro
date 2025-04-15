@@ -5,7 +5,7 @@ import { Socket } from "net";
 import { URL } from "url";
 
 import type { ProxyCallbacks, ProxyOptions, ProxyRouteConfig } from "../types";
-import { LoadBalancingService } from "../../loadbalancing";
+import { DiscoveryService } from "../../discovery";
 import { hasEncryptedConnection } from "../utils";
 import { ServiceInstance } from "../../common";
 
@@ -14,16 +14,11 @@ import { ServiceInstance } from "../../common";
  * Supports optional service-based load balancing or direct target usage.
  */
 export abstract class BaseProxyService {
-  constructor(@Inject(LoadBalancingService) protected readonly loadBalancingService: LoadBalancingService) {}
+  constructor(@Inject(DiscoveryService) protected readonly discoveryService: DiscoveryService) {}
 
   abstract proxyRequest(req: RawBodyRequest<Request>, res: Response, routeConfig: ProxyRouteConfig): Promise<void>;
 
-  abstract handleProxy(
-    req: IncomingMessage,
-    res: ServerResponse,
-    options: ProxyOptions,
-    callbacks: ProxyCallbacks
-  ): void;
+  abstract handleProxy(req: IncomingMessage, res: ServerResponse, options: ProxyOptions, callbacks: ProxyCallbacks): void;
 
   /**
    * Resolves the target URL using a service instance and target configuration.
@@ -36,7 +31,7 @@ export abstract class BaseProxyService {
   protected resolveTargetUrl(
     target: ((instance: ServiceInstance) => string) | string | undefined,
     instance: ServiceInstance,
-    urlBuildAgent: (instance: ServiceInstance) => string
+    urlBuildAgent: (instance: ServiceInstance) => string,
   ): string {
     if (typeof target === "function") {
       return target(instance);
@@ -70,7 +65,7 @@ export abstract class BaseProxyService {
     req: RawBodyRequest<Request> | Request,
     res: Response,
     options: ProxyOptions,
-    proxyFn: (req: IncomingMessage, res: ServerResponse | Socket, options: ProxyOptions) => void
+    proxyFn: (req: IncomingMessage, res: ServerResponse | Socket, options: ProxyOptions) => void,
   ): Promise<void> {
     return new Promise((resolve) => {
       proxyFn(req as IncomingMessage, res as ServerResponse, options);
@@ -153,7 +148,7 @@ export abstract class BaseProxyService {
     req: IncomingMessage,
     res: ServerResponse | Socket,
     target?: any,
-    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void
+    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void,
   ): void {
     if (onError) {
       onError(err, req, res, target);

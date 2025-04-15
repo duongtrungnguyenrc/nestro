@@ -1,10 +1,10 @@
 import { IncomingMessage } from "http";
+import { Request } from "express";
 import { Socket } from "net";
 import { URL } from "url";
 
 import { SSL_PROTOCOL_REGEX, UPGRADE_HEADER_REGEX, WEBSOCKET_UPGRADE_REGEX, SOCKET_IO_PATH_REGEX, WEBSOCKET_UPGRADE_HEADER } from "./constants";
 import { OutgoingOptions, ProxyOptions, ProxyTarget } from "./types";
-import { Request } from "express";
 import { ProxyService } from "./services";
 
 /**
@@ -17,12 +17,7 @@ import { ProxyService } from "./services";
  * @param forward - Optional key to select forward target (defaults to 'target').
  * @returns Configured outgoing options.
  */
-export function setupOutgoing(
-  outgoing: OutgoingOptions = {},
-  options: ProxyOptions,
-  req: IncomingMessage,
-  forward?: string
-): OutgoingOptions {
+export function setupOutgoing(outgoing: OutgoingOptions = {}, options: ProxyOptions, req: IncomingMessage, forward?: string): OutgoingOptions {
   const targetKey = forward || "target";
   const target = options[targetKey] as URL | ProxyTarget | undefined;
 
@@ -90,18 +85,7 @@ function getTargetPort(target: URL | ProxyTarget): number {
  * @param target - The target URL or ProxyTarget.
  */
 function copyTargetProperties(outgoing: OutgoingOptions, target: URL | ProxyTarget): void {
-  const props = [
-    "host",
-    "hostname",
-    "socketPath",
-    "pfx",
-    "key",
-    "passphrase",
-    "cert",
-    "ca",
-    "ciphers",
-    "secureProtocol",
-  ];
+  const props = ["host", "hostname", "socketPath", "pfx", "key", "passphrase", "cert", "ca", "ciphers", "secureProtocol"];
 
   for (const prop of props) {
     if (target[prop] !== undefined) {
@@ -164,7 +148,7 @@ function buildPath(target: URL | ProxyTarget, rewrittenPath: string, options: Pr
  * @param path - The original request path to be rewritten.
  * @param req - The incoming HTTP request object.
  * @param options - The proxy options containing rewrite rules and flags.
- * @returns The rewritten path, or an empty string if `ignorePath` is true, 
+ * @returns The rewritten path, or an empty string if `ignorePath` is true,
  *          or the original path if no rewrite rules match.
  *
  * @remarks
@@ -182,7 +166,7 @@ function buildPath(target: URL | ProxyTarget, rewrittenPath: string, options: Pr
  *     '^/old-route': (path, req) => `/new-route${path.substring(9)}`
  *   }
  * };
- * 
+ *
  * const rewrittenPath = rewritePath('/api/users', req, options);
  * console.log(rewrittenPath); // Output: '/backend/users'
  * ```
@@ -287,11 +271,7 @@ export function urlJoin(...args: string[]): string {
  * @param property - The property to rewrite (e.g., 'domain', 'path').
  * @returns The rewritten cookie header(s).
  */
-export function rewriteCookieProperty(
-  header: string | string[],
-  config: Record<string, string | null>,
-  property: string
-): string | string[] {
+export function rewriteCookieProperty(header: string | string[], config: Record<string, string | null>, property: string): string | string[] {
   if (Array.isArray(header)) {
     return header.map((h) => rewriteCookieProperty(h, config, property) as string);
   }
@@ -326,7 +306,7 @@ export function isSocketRequest(req: Request): boolean {
 export abstract class ProxyTemplate {
   protected _proxyService: ProxyService;
 
-  constructor(_proxyService: ProxyService) {
-    this._proxyService = _proxyService;
+  constructor(proxyService: ProxyService) {
+    this._proxyService = proxyService;
   }
 }

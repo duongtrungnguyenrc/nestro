@@ -49,9 +49,7 @@ export function buildInstanceHttpUrl(instance: ServiceInstance) {
 }
 
 export function buildInstanceWsUrl(instance: ServiceInstance) {
-  return `${instance.protocol === "https" ? "wss" : "ws"}://${instance.host}${
-    instance.port ? `:${instance.port}` : ""
-  }`;
+  return `${instance.protocol === "https" ? "wss" : "ws"}://${instance.host}${instance.port ? `:${instance.port}` : ""}`;
 }
 
 export function buildHttpUrl(host: string, protocol: HttpProtocols = "http", port?: number) {

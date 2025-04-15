@@ -7,9 +7,9 @@ import { URL } from "url";
 
 import { buildInstanceWsUrl, debugError, debugLog, debugWarn, ServiceInstance } from "../../common";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
-import { LoadBalancingService } from "../../loadbalancing";
 import { BaseProxyService } from "./base-proxy.service";
 import { setupOutgoing, setupSocket } from "../utils";
+import { DiscoveryService } from "../../discovery";
 
 /**
  * Service responsible for proxying HTTP and WebSocket requests, including Socket.IO support.
@@ -17,8 +17,8 @@ import { setupOutgoing, setupSocket } from "../utils";
  */
 @Injectable()
 export class WsProxyService extends BaseProxyService {
-  constructor(@Inject(LoadBalancingService) loadBalancingService: LoadBalancingService) {
-    super(loadBalancingService);
+  constructor(@Inject(DiscoveryService) discoveryService: DiscoveryService) {
+    super(discoveryService);
   }
 
   /**
@@ -42,7 +42,7 @@ export class WsProxyService extends BaseProxyService {
 
       if (routeConfig.service) {
         // Use load balancing with service
-        await this.loadBalancingService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
+        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceWsUrl);
           debugLog(WsProxyService.name, `Proxying WebSocket request from ${originalUrl} to ${targetUrl}`);
 
@@ -73,12 +73,7 @@ export class WsProxyService extends BaseProxyService {
    * @param options - Proxy configuration options.
    * @param callbacks - Optional callbacks for lifecycle events.
    */
-  handleProxy(
-    req: IncomingMessage,
-    _: ServerResponse,
-    options: ProxyOptions = {},
-    callbacks: ProxyCallbacks = {}
-  ): void {
+  handleProxy(req: IncomingMessage, _: ServerResponse, options: ProxyOptions = {}, callbacks: ProxyCallbacks = {}): void {
     const socket = req.socket;
     const head = Buffer.from("");
 
@@ -110,13 +105,7 @@ export class WsProxyService extends BaseProxyService {
    * @param options - Normalized proxy options.
    * @param callbacks - Optional callbacks for lifecycle events.
    */
-  private streamRequest(
-    req: IncomingMessage,
-    socket: Socket,
-    head: Buffer,
-    options: ProxyOptions,
-    callbacks: ProxyCallbacks
-  ): void {
+  private streamRequest(req: IncomingMessage, socket: Socket, head: Buffer, options: ProxyOptions, callbacks: ProxyCallbacks): void {
     const createHttpHeader = (line: string, headers: Record<string, string | string[] | undefined>): string => {
       const lines = [line];
       for (const [key, value] of Object.entries(headers)) {
@@ -153,12 +142,7 @@ export class WsProxyService extends BaseProxyService {
     proxyReq.on("response", (proxyRes: IncomingMessage) => {
       if (!proxyRes.headers.upgrade || proxyRes.headers.upgrade.toLowerCase() !== "websocket") {
         debugWarn(WsProxyService.name, "WebSocket upgrade failed, falling back to HTTP");
-        socket.write(
-          createHttpHeader(
-            `HTTP/${proxyRes.httpVersion} ${proxyRes.statusCode} ${proxyRes.statusMessage || ""}`,
-            proxyRes.headers
-          )
-        );
+        socket.write(createHttpHeader(`HTTP/${proxyRes.httpVersion} ${proxyRes.statusCode} ${proxyRes.statusMessage || ""}`, proxyRes.headers));
         proxyRes.pipe(socket);
       }
     });

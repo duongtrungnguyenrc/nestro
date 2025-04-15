@@ -7,7 +7,7 @@ import { ServiceInstance } from "../common";
 import { ProxyModuleBuilder } from "./proxy-module.builder";
 import { ProxyService } from "./services";
 
-export type HookExclude = {
+export type HookRoute = {
   path: string;
   method: RequestMethod;
 };
@@ -15,7 +15,8 @@ export type HookExclude = {
 export type RequestHook<T> =
   | {
       instance: Type<T>;
-      excludes?: Array<HookExclude>;
+      includes?: Array<HookRoute>;
+      excludes?: Array<HookRoute>;
     }
   | Type<T>;
 
@@ -246,10 +247,5 @@ export interface ProxyCallbacks {
    * @param res - The outgoing HTTP response or socket.
    * @param target - The target URL or proxy target being proxied to.
    */
-  onError?: (
-    err: Error,
-    req: IncomingMessage,
-    res: ServerResponse | Socket,
-    target?: string | URL | ProxyTarget
-  ) => void;
+  onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: string | URL | ProxyTarget) => void;
 }

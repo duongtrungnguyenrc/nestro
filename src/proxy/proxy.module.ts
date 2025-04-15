@@ -1,6 +1,6 @@
 import { DynamicModule, MiddlewareConsumer, Module, NestMiddleware, NestModule, Type } from "@nestjs/common";
 
-import type { HookExclude, IRoutingConfig, ProxyRouteConfig, RoutingConfigFunction } from "./types";
+import type { HookRoute, IRoutingConfig, ProxyRouteConfig, RoutingConfigFunction } from "./types";
 import { ProxyModuleBuilder } from "./proxy-module.builder";
 import { ProxyController } from "./proxy.controller";
 import { isClass } from "../common";
@@ -10,7 +10,7 @@ import { isClass } from "../common";
  */
 @Module({})
 export class ProxyModule implements NestModule {
-  static routes: ProxyRouteConfig[] = [];
+  static routes: Array<ProxyRouteConfig> = [];
   static globalMiddlewares: Array<Type<NestMiddleware>> = [];
 
   /**
@@ -49,7 +49,7 @@ export class ProxyModule implements NestModule {
       if (!middlewareHooks?.length) return;
 
       const middlewares: Array<Type<NestMiddleware>> = [];
-      const excludes: HookExclude[] = [];
+      const excludes: HookRoute[] = [];
 
       middlewareHooks.forEach((hook) => {
         if (typeof hook === "function") {

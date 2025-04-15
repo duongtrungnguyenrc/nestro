@@ -8,8 +8,8 @@ import { URL } from "url";
 import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, ServiceInstance } from "../../common";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
 import { rewriteCookieProperty, setupOutgoing } from "../utils";
-import { LoadBalancingService } from "../../loadbalancing";
 import { BaseProxyService } from "./base-proxy.service";
+import { DiscoveryService } from "../../discovery";
 
 /**
  * Service responsible for proxying HTTP and WebSocket requests, including Socket.IO support.
@@ -17,8 +17,8 @@ import { BaseProxyService } from "./base-proxy.service";
  */
 @Injectable()
 export class HttpProxyService extends BaseProxyService {
-  constructor(@Inject(LoadBalancingService) loadBalancingService: LoadBalancingService) {
-    super(loadBalancingService);
+  constructor(@Inject(DiscoveryService) discoveryService: DiscoveryService) {
+    super(discoveryService);
   }
 
   /**
@@ -45,7 +45,7 @@ export class HttpProxyService extends BaseProxyService {
 
       if (routeConfig.service) {
         // Use load balancing with service
-        await this.loadBalancingService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
+        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceHttpUrl);
           debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
 
@@ -75,12 +75,7 @@ export class HttpProxyService extends BaseProxyService {
    * @param options - Proxy configuration options.
    * @param callbacks - Optional callbacks for lifecycle events.
    */
-  handleProxy(
-    req: IncomingMessage,
-    res: ServerResponse,
-    options: ProxyOptions = {},
-    callbacks: ProxyCallbacks = {}
-  ): void {
+  handleProxy(req: IncomingMessage, res: ServerResponse, options: ProxyOptions = {}, callbacks: ProxyCallbacks = {}): void {
     try {
       const normalizedOptions = this.normalizeOptions(options, req.url || "/");
 
@@ -108,12 +103,7 @@ export class HttpProxyService extends BaseProxyService {
    * @param options - Normalized proxy options.
    * @param callbacks - Optional callbacks for lifecycle events.
    */
-  private streamRequest(
-    req: IncomingMessage,
-    res: ServerResponse,
-    options: ProxyOptions,
-    callbacks: ProxyCallbacks
-  ): void {
+  private streamRequest(req: IncomingMessage, res: ServerResponse, options: ProxyOptions, callbacks: ProxyCallbacks): void {
     callbacks.onStart?.(req, res, options.target);
 
     const targetProtocol = (options.target as URL).protocol === "https:" ? "https" : "http";
@@ -215,16 +205,12 @@ export class HttpProxyService extends BaseProxyService {
     if (!cookies) return;
 
     if (options.cookieDomainRewrite) {
-      const config =
-        typeof options.cookieDomainRewrite === "string"
-          ? { "*": options.cookieDomainRewrite }
-          : options.cookieDomainRewrite;
+      const config = typeof options.cookieDomainRewrite === "string" ? { "*": options.cookieDomainRewrite } : options.cookieDomainRewrite;
       res.setHeader("set-cookie", rewriteCookieProperty(cookies as string | string[], config, "domain"));
     }
 
     if (options.cookiePathRewrite) {
-      const config =
-        typeof options.cookiePathRewrite === "string" ? { "*": options.cookiePathRewrite } : options.cookiePathRewrite;
+      const config = typeof options.cookiePathRewrite === "string" ? { "*": options.cookiePathRewrite } : options.cookiePathRewrite;
       res.setHeader("set-cookie", rewriteCookieProperty(cookies as string | string[], config, "path"));
     }
   }
@@ -244,7 +230,7 @@ export class HttpProxyService extends BaseProxyService {
     target: string | URL | ProxyTarget | undefined,
     req: IncomingMessage,
     res: ServerResponse | Socket,
-    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void
+    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void,
   ): (err: Error) => void {
     return (err: Error): void => {
       if (req.socket.destroyed && err.message.includes("ECONNRESET")) {

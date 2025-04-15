@@ -35,10 +35,7 @@ export class ServerModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(SecurityMiddleware)
-      .exclude(
-        { path: "/nestro/services", method: RequestMethod.GET },
-        { path: "/nestro/dashboard(.*)", method: RequestMethod.ALL }
-      )
+      .exclude({ path: "/nestro/services", method: RequestMethod.GET }, { path: "/nestro/dashboard(.*)", method: RequestMethod.ALL })
       .forRoutes("/nestro/*");
   }
 }

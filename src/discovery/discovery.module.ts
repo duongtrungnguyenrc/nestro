@@ -1,19 +1,13 @@
 import { DynamicModule, FactoryProvider, Module, ValueProvider } from "@nestjs/common";
 
+import { DEFAULT_LOAD_BALANCING_REFRESH_INTERVAL, DEFAULT_LOAD_BALANCING_STRATEGY, LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "./constants";
+import { DiscoveryService, FailureTrackerService } from "./services";
+import { LoadBalancingFactory } from "./loadbalancing";
 import { LoadBalancingConfigs } from "./types";
-import {
-  DEFAULT_LOAD_BALANCING_REFRESH_INTERVAL,
-  DEFAULT_LOAD_BALANCING_STRATEGY,
-  LOAD_BALANCER,
-  LOAD_BALANCING_CONFIGS,
-} from "./constants";
-import { LoadBalancingFactory } from "./load-balancing.factory";
-import { LoadBalancingService } from "./load-balancing.service";
-import { TemporaryFailureTracker } from "./failure-tracker";
 import { ILoadBalancer } from "./interfaces";
 
 @Module({})
-export class LoadBalancingModule {
+export class DiscoveryModule {
   static register(config: LoadBalancingConfigs): DynamicModule {
     const loadBalancingConfigProvider: ValueProvider<LoadBalancingConfigs> = {
       provide: LOAD_BALANCING_CONFIGS,
@@ -33,9 +27,9 @@ export class LoadBalancingModule {
     };
 
     return {
-      module: LoadBalancingModule,
-      providers: [loadBalancingConfigProvider, loadBalancerProvider, TemporaryFailureTracker, LoadBalancingService],
-      exports: [LoadBalancingService],
+      module: DiscoveryModule,
+      providers: [loadBalancingConfigProvider, loadBalancerProvider, FailureTrackerService, DiscoveryService],
+      exports: [DiscoveryService],
     };
   }
 }

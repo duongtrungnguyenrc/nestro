@@ -75,7 +75,6 @@ export type ServiceInstance = Service & {
  * @template TServer - The type of the server, which can be either `CoreHttpServer`
  * or `CoreHttpsServer`. Defaults to `CoreHttpServer`.
  */
-export type NestroApplication<TServer extends CoreHttpServer | CoreHttpsServer = CoreHttpServer> =
-  NestExpressApplication<TServer> & {
-    listen: (port?: number) => Promise<TServer>;
-  };
+export type NestroApplication<TServer extends CoreHttpServer | CoreHttpsServer = CoreHttpServer> = NestExpressApplication<TServer> & {
+  listen: (port?: number) => Promise<TServer>;
+};

@@ -1,47 +1,47 @@
 import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, Logger } from "@nestjs/common";
 
-import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "./constants";
-import { buildHttpUrl, debugLog, ServiceInstance } from "../common";
-import { TemporaryFailureTracker } from "./failure-tracker";
-import type { LoadBalancingConfigs } from "./types";
-import { ResponseTimeStrategy } from "./strategies";
-import { SERVER_INFO, ServerInfo } from "../client";
-import { ILoadBalancer } from "./interfaces";
+import { buildHttpUrl, debugLog, ServiceInstance } from "../../common";
+import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "../constants";
+import { FailureTrackerService } from "./failure-tracker.service";
+import { ResponseTimeStrategy } from "../loadbalancing";
+import { SERVER_INFO, ServerInfo } from "../../client";
+import type { LoadBalancingConfigs } from "../types";
+import { ILoadBalancer } from "../interfaces";
 
 @Injectable()
-export class LoadBalancingService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(LoadBalancingService.name);
+export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(DiscoveryService.name);
   private instances: Map<string, ServiceInstance[]> = new Map();
   private refreshIntervalId: NodeJS.Timeout;
   private serverBaseUrl: string;
 
   constructor(
-    @Inject(LOAD_BALANCING_CONFIGS) private readonly loadBalancingOptions: LoadBalancingConfigs,
+    @Inject(LOAD_BALANCING_CONFIGS) private readonly loadBalancingConfigs: LoadBalancingConfigs,
     @Inject(LOAD_BALANCER) private readonly loadBalancer: ILoadBalancer,
     @Inject(SERVER_INFO) private readonly serverInfo: ServerInfo,
-    @Inject(TemporaryFailureTracker) private readonly failureTracker: TemporaryFailureTracker
+    @Inject(FailureTrackerService) private readonly failureTracker: FailureTrackerService,
   ) {
     this.serverBaseUrl = buildHttpUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
   }
 
   async onModuleInit() {
-    debugLog("LoadBalancingService", "Initializing LoadBalancingService...");
+    debugLog("DiscoveryService", "Initializing DiscoveryService...");
     await this.loadInstances();
-    this.refreshIntervalId = setInterval(() => this.loadInstances(), this.loadBalancingOptions.refreshInterval);
+    this.refreshIntervalId = setInterval(() => this.loadInstances(), this.loadBalancingConfigs.refreshInterval);
   }
 
   onModuleDestroy() {
     if (this.refreshIntervalId) {
       clearInterval(this.refreshIntervalId);
     }
-    debugLog("LoadBalancingService", "LoadBalancingService stopped");
+    debugLog("DiscoveryService", "DiscoveryService stopped");
   }
 
   /**
    * Refreshes the service registry by fetching the latest instances from the server
    */
   async loadInstances(): Promise<void> {
-    debugLog("LoadBalancingService", "Refreshing service registry");
+    debugLog("DiscoveryService", "Refreshing service registry");
 
     try {
       const response = await fetch(`${this.serverBaseUrl}/nestro/services`, {
@@ -72,7 +72,7 @@ export class LoadBalancingService implements OnModuleInit, OnModuleDestroy {
       // This allows failed instances to be tried again after a refresh
       this.failureTracker.resetAll();
 
-      debugLog("LoadBalancingService", `Registry refreshed with ${this.instances.size} services`);
+      debugLog("DiscoveryService", `Registry refreshed with ${this.instances.size} services`);
     } catch (error) {
       this.logger.error(`Failed to refresh registry: ${error.message}`);
     }
@@ -134,9 +134,7 @@ export class LoadBalancingService implements OnModuleInit, OnModuleDestroy {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       // Select an instance that hasn't been tried yet in this request
-      const remainingInstances = availableInstances.filter(
-        (instance) => !attemptedInstances.has(this.getInstanceId(instance))
-      );
+      const remainingInstances = availableInstances.filter((instance) => !attemptedInstances.has(this.getInstanceId(instance)));
 
       if (remainingInstances.length === 0) {
         break; // No more instances to try

@@ -1,12 +1,10 @@
-import {
-  LeastConnectionsStrategy,
-  RandomStrategy,
-  ResponseTimeStrategy,
-  RoundRobinStrategy,
-  WeightedRoundRobinStrategy,
-} from "./strategies";
-import { ILoadBalancer } from "./interfaces";
-import { LoadBalancingStrategy } from "./types";
+import { WeightedRoundRobinStrategy } from "./weighted-round-robin.strategy";
+import { LeastConnectionsStrategy } from "./least-connection.strategy";
+import { ResponseTimeStrategy } from "./response-time.strategy";
+import { RoundRobinStrategy } from "./round-robin.strategy";
+import { RandomStrategy } from "./random.strategy";
+import { LoadBalancingStrategy } from "../types";
+import { ILoadBalancer } from "../interfaces";
 
 export class LoadBalancingFactory {
   static getStrategy(strategyType: LoadBalancingStrategy): ILoadBalancer {

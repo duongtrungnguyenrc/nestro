@@ -1,15 +1,19 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { BeforeApplicationShutdown, Inject, Injectable } from "@nestjs/common";
 
 import { IRegistryStorage, STORAGE, STORAGE_OPTIONS, StorageOptions } from "../../storage";
+import { debugLog, type Service } from "../../common";
 import type { RegisterResponse } from "../types";
-import type { Service } from "../../common";
 
 @Injectable()
-export class RegistryService {
+export class RegistryService implements BeforeApplicationShutdown {
   constructor(
     @Inject(STORAGE_OPTIONS) private readonly storageOptions: StorageOptions,
     @Inject(STORAGE) private readonly storage: IRegistryStorage
   ) {}
+
+  beforeApplicationShutdown() {
+    debugLog("Nestro server", "Nestro server stopping");
+  }
 
   async register(service: Service): Promise<RegisterResponse> {
     const key = service.name;

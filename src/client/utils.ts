@@ -1,10 +1,10 @@
-import { LoadBalancingService } from "../loadbalancing";
+import { DiscoveryService } from "../discovery";
 
 export abstract class CommunicationTemplate {
-  service: LoadBalancingService;
+  _discoveryService: DiscoveryService;
 
-  constructor(service: LoadBalancingService) {
-    this.service = service;
+  constructor(discoveryService: DiscoveryService) {
+    this._discoveryService = discoveryService;
   }
 }
 
@@ -12,8 +12,8 @@ export const createCommunicationTemplate = (target: string) => {
   return class CommunicationTemplateWithService extends CommunicationTemplate {
     targetService: string = target;
 
-    constructor(service: LoadBalancingService) {
-      super(service);
+    constructor(discoveryService: DiscoveryService) {
+      super(discoveryService);
     }
   };
 };
