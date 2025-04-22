@@ -1,25 +1,27 @@
 import { Module, DynamicModule, ValueProvider } from "@nestjs/common";
 
-import { DEFAULT_HOST, DEFAULT_SERVER_PORT, getHttpSecureProtocol, type ServiceInstance } from "../common";
+import { DEFAULT_SERVER_PORT, getHttpSecureProtocol, type ServiceInstance } from "../common";
 import type { NestroClientConfig, ServerInfo, InstanceInfo } from "./types";
 import { INSTANCE_INFO, INSTANCES, SERVER_INFO } from "./constants";
 import { DiscoveryModule } from "../discovery";
 import { SecurityModule } from "../security";
 import { ClientService } from "./services";
+import { getDefaultHost } from "./utils";
 
 @Module({})
 export class ClientModule {
   static register(config: NestroClientConfig): DynamicModule {
-    const instanceOptionsProvider: ValueProvider<InstanceInfo> = {
+    const instanceInfoProvider: ValueProvider<InstanceInfo> = {
       provide: INSTANCE_INFO,
       useValue: {
         ...config.client,
-        host: config.client.host || DEFAULT_HOST,
+        host: config.client.host || getDefaultHost(),
+        port: config.client.port,
         protocol: getHttpSecureProtocol(config.server.secure),
       },
     };
 
-    const nestroServerOptionsProvider: ValueProvider<ServerInfo> = {
+    const nestroServerInfoProvider: ValueProvider<ServerInfo> = {
       provide: SERVER_INFO,
       useValue: {
         ...config.server,
@@ -36,7 +38,7 @@ export class ClientModule {
     return {
       module: ClientModule,
       imports: [SecurityModule.register(config.security || {}), DiscoveryModule.register(config.loadbalancing || {})],
-      providers: [instanceOptionsProvider, nestroServerOptionsProvider, instancesProvider, ClientService],
+      providers: [instanceInfoProvider, nestroServerInfoProvider, instancesProvider, ClientService],
       exports: [SERVER_INFO, INSTANCE_INFO, DiscoveryModule],
       global: true,
     };

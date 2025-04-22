@@ -5,6 +5,7 @@ import { NestFactory } from "@nestjs/core";
 import { debugLog, type NestroApplication } from "../common";
 import type { NestroClientConfig } from "./types";
 import { ClientModule } from "./client.module";
+import { getFreePort } from "./utils";
 
 function wrapModuleWithRegistry(AppModule: any, config: NestroClientConfig): any {
   @Module({
@@ -20,7 +21,15 @@ export async function createNestroApplication(
   config: NestroClientConfig,
   applicationOptions?: NestApplicationOptions
 ): Promise<NestroApplication> {
-  const wrappedModule = wrapModuleWithRegistry(AppModule, config);
+  const clientConfig: NestroClientConfig = {
+    ...config,
+    client: {
+      ...config.client,
+      port: config.client.port || (await getFreePort()),
+    },
+  };
+
+  const wrappedModule = wrapModuleWithRegistry(AppModule, clientConfig);
 
   const app = await NestFactory.create<NestExpressApplication>(wrappedModule, applicationOptions);
 
@@ -29,7 +38,7 @@ export async function createNestroApplication(
   nestroApp.enableShutdownHooks();
 
   nestroApp.listen = async () => {
-    const server = await app.listen(config.client.port);
+    const server = await app.listen(clientConfig.client.port);
     debugLog("Nestro", "Nestro application initial success");
 
     return server;

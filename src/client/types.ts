@@ -16,7 +16,7 @@ import type { SecurityModuleConfigs } from "../security";
  * @property {string} name - The name of the service instance (required).
  * @property {Partial<Omit<InstanceConfig, "port">>} [otherProperties] - Any other optional properties from `InstanceConfig`, excluding `port`.
  */
-export type ServiceInstanceConfig = Pick<InstanceConfig, "port"> & Partial<Omit<InstanceConfig, "port">> & { name: string };
+export type ServiceInstanceConfig = Partial<InstanceConfig> & { name: string };
 
 /**
  * Represents detailed information about an instance, combining instance options
