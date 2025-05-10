@@ -1,5 +1,5 @@
 import { ILoadBalancer } from "../interfaces";
-import { ServiceInfo } from "../../common";
+import { Service } from "../../common";
 
 /**
  * Least-connections load balancing strategy
@@ -8,7 +8,7 @@ import { ServiceInfo } from "../../common";
 export class LeastConnectionsStrategy implements ILoadBalancer {
   private connectionCounters: Map<string, number> = new Map();
 
-  selectInstance(instances: ServiceInfo[]): ServiceInfo | null {
+  selectInstance(instances: Service[]): Service | null {
     if (!instances || instances.length === 0) {
       return null;
     }
@@ -19,7 +19,7 @@ export class LeastConnectionsStrategy implements ILoadBalancer {
 
     let minConnections = Number.MAX_SAFE_INTEGER;
     let selectedInstance = instances[0];
-    let candidatesWithSameConnections: ServiceInfo[] = [];
+    let candidatesWithSameConnections: Service[] = [];
 
     // Find instance with minimum connections
     for (const instance of instances) {
@@ -61,7 +61,7 @@ export class LeastConnectionsStrategy implements ILoadBalancer {
     this.connectionCounters.clear();
   }
 
-  private getInstanceId(instance: ServiceInfo): string {
+  private getInstanceId(instance: Service): string {
     return `${instance.name}:${instance.host}:${instance.port}`;
   }
 }

@@ -1,7 +1,7 @@
 import { Controller, All, Req, Res, Inject, RawBodyRequest } from "@nestjs/common";
 import { Request, Response } from "express";
 
-import { ProxyService } from "./services";
+import { ProxyService } from "../services";
 
 /**
  * Controller for handling proxy requests.

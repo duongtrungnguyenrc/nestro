@@ -1,6 +1,6 @@
 import { Logger } from "@nestjs/common";
 
-import { HttpProtocols, ServiceInfo, WsPRotocols } from "./types";
+import { HttpProtocols, Service, WsPRotocols } from "./types";
 import { CLASS_REGEX } from "./constants";
 
 function canLog() {
@@ -44,11 +44,11 @@ export function normalizeJson(data: object): string {
   return JSON.stringify(data, Object.keys(data).sort(), 0);
 }
 
-export function buildInstanceHttpUrl(instance: ServiceInfo) {
+export function buildInstanceHttpUrl(instance: Service) {
   return `${instance.protocol}://${instance.host}${instance.port ? `:${instance.port}` : ""}`;
 }
 
-export function buildInstanceWsUrl(instance: ServiceInfo) {
+export function buildInstanceWsUrl(instance: Service) {
   return `${instance.protocol === "https" ? "wss" : "ws"}://${instance.host}${instance.port ? `:${instance.port}` : ""}`;
 }
 

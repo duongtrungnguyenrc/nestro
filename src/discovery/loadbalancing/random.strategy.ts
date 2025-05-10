@@ -1,12 +1,12 @@
 import { ILoadBalancer } from "../interfaces";
-import { ServiceInfo } from "../../common";
+import { Service } from "../../common";
 
 /**
  * Random load balancing strategy
  * Selects a random instance from the available instances
  */
 export class RandomStrategy implements ILoadBalancer {
-  selectInstance(instances: ServiceInfo[]): ServiceInfo | null {
+  selectInstance(instances: Service[]): Service | null {
     if (!instances || instances.length === 0) {
       return null;
     }

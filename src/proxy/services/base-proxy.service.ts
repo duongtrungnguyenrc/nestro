@@ -7,7 +7,7 @@ import { URL } from "url";
 import type { ProxyCallbacks, ProxyOptions, ProxyRouteConfig } from "../types";
 import { DiscoveryService } from "../../discovery";
 import { hasEncryptedConnection } from "../utils";
-import { ServiceInfo } from "../../common";
+import { Service } from "../../common";
 
 /**
  * Service responsible for proxying HTTP and WebSocket requests, including Socket.IO support.
@@ -29,9 +29,9 @@ export abstract class BaseProxyService {
    * @returns The resolved target URL.
    */
   protected resolveTargetUrl(
-    target: ((instance: ServiceInfo) => string) | string | undefined,
-    instance: ServiceInfo,
-    urlBuildAgent: (instance: ServiceInfo) => string
+    target: ((instance: Service) => string) | string | undefined,
+    instance: Service,
+    urlBuildAgent: (instance: Service) => string
   ): string {
     if (typeof target === "function") {
       return target(instance);
@@ -45,7 +45,7 @@ export abstract class BaseProxyService {
    * @param target - The target from routeConfig, can be a string or function.
    * @returns The resolved target URL.
    */
-  protected resolveDirectTarget(target: ((instance: ServiceInfo) => string) | string): string {
+  protected resolveDirectTarget(target: ((instance: Service) => string) | string): string {
     if (typeof target === "function") {
       throw new Error("Target as a function requires a service instance, but no service was provided");
     }

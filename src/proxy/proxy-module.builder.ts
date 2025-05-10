@@ -3,7 +3,7 @@ import { CanActivate, DynamicModule, NestMiddleware, Provider, Type, ValueProvid
 import { HttpProxyService, ProxyService, RouteHandleService, WsProxyService } from "./services";
 import type { ProxyRouteConfig, ProxyRequestHooks, RequestHook } from "./types";
 import { GLOBAL_GUARDS, PROXY_ROUTES_CONFIG } from "./constants";
-import { ProxyController } from "./proxy.controller";
+import { ProxyController } from "./controllers";
 import { DEFAULT_PROTOCOL } from "../common";
 import { ProxyModule } from "./proxy.module";
 

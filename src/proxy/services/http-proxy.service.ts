@@ -5,7 +5,7 @@ import { Request, Response } from "express";
 import { Socket } from "net";
 import { URL } from "url";
 
-import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, ServiceInfo } from "../../common";
+import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, Service } from "../../common";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
 import { rewriteCookieProperty, setupOutgoing } from "../utils";
 import { BaseProxyService } from "./base-proxy.service";
@@ -45,7 +45,7 @@ export class HttpProxyService extends BaseProxyService {
 
       if (routeConfig.service) {
         // Use load balancing with service
-        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: ServiceInfo) => {
+        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: Service) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceHttpUrl);
           debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
 

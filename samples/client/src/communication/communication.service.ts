@@ -1,4 +1,4 @@
-import { CommunicateRequest, createCommunicationTemplate, DiscoveryService, ServiceInfo } from "@duongtrungnguyen/nestro";
+import { CommunicateRequest, createCommunicationTemplate, DiscoveryService } from "@duongtrungnguyen/nestro";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
@@ -9,7 +9,7 @@ export class CommunicationService extends createCommunicationTemplate("user") {
   }
 
   @CommunicateRequest()
-  async getUser(instance: ServiceInfo) {
+  async getUser(instance: Service) {
     // do something with instance
   }
 }

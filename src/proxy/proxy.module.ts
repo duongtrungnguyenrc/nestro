@@ -2,7 +2,7 @@ import { DynamicModule, MiddlewareConsumer, Module, NestMiddleware, NestModule, 
 
 import type { HookRoute, IRoutingConfig, ProxyRouteConfig, RoutingConfigFunction } from "./types";
 import { ProxyModuleBuilder } from "./proxy-module.builder";
-import { ProxyController } from "./proxy.controller";
+import { ProxyController } from "./controllers";
 import { isClass } from "../common";
 /**
  * Module for configuring and registering proxy routes.

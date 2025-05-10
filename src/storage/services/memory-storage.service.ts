@@ -1,12 +1,12 @@
 import { Inject, OnModuleInit } from "@nestjs/common";
 
-import { debugLog, type Service, type ServiceInfo } from "../../common";
+import type { ServiceInstance, StorageOptions } from "../types";
+import { debugLog, type Service } from "../../common";
 import { IRegistryStorage } from "../interfaces";
-import type { StorageOptions } from "../types";
 import { STORAGE_OPTIONS } from "../constants";
 
 export class MemoryStorage implements IRegistryStorage, OnModuleInit {
-  private memoryStore = new Map<string, Map<string, ServiceInfo>>();
+  private memoryStore = new Map<string, Map<string, ServiceInstance>>();
   private cleanupInterval?: NodeJS.Timeout;
 
   constructor(@Inject(STORAGE_OPTIONS) private readonly options: StorageOptions) {}
@@ -39,7 +39,6 @@ export class MemoryStorage implements IRegistryStorage, OnModuleInit {
     const existingInstance = instances.get(instanceId);
 
     if (!existingInstance) {
-      // Auto register on heartbeat (optional)
       await this.register(key, instance);
       debugLog("RegistryService", "Recovered missing instance via heartbeat", { key, instanceId });
       return;
@@ -66,12 +65,12 @@ export class MemoryStorage implements IRegistryStorage, OnModuleInit {
     debugLog("RegistryService", "Deregistered service from memory", { key, instanceId });
   }
 
-  async getServices(serviceName?: string): Promise<Record<string, ServiceInfo[]>> {
+  async getServices(serviceName?: string): Promise<Record<string, ServiceInstance[]>> {
     if (serviceName) {
       return { [serviceName]: Array.from(this.memoryStore.get(serviceName)?.values() || []) };
     }
 
-    const result: Record<string, ServiceInfo[]> = {};
+    const result: Record<string, ServiceInstance[]> = {};
     this.memoryStore.forEach((instances, name) => {
       result[name] = Array.from(instances.values());
     });
@@ -122,7 +121,7 @@ export class MemoryStorage implements IRegistryStorage, OnModuleInit {
     return `${instance.name}:${instance.host}:${instance.port}`;
   }
 
-  private getOrCreateInstances(key: string): Map<string, ServiceInfo> {
+  private getOrCreateInstances(key: string): Map<string, ServiceInstance> {
     let instances = this.memoryStore.get(key);
     if (!instances) {
       instances = new Map();

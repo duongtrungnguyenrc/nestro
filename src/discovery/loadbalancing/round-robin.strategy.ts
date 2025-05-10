@@ -1,5 +1,5 @@
 import { ILoadBalancer } from "../interfaces";
-import { ServiceInfo } from "../../common";
+import { Service } from "../../common";
 
 /**
  * Round-robin load balancing strategy
@@ -8,7 +8,7 @@ import { ServiceInfo } from "../../common";
 export class RoundRobinStrategy implements ILoadBalancer {
   private counters: Map<string, number> = new Map();
 
-  selectInstance(instances: ServiceInfo[]): ServiceInfo | null {
+  selectInstance(instances: Service[]): Service | null {
     if (!instances || instances.length === 0) {
       return null;
     }

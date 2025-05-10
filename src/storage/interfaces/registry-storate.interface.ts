@@ -1,4 +1,4 @@
-import { Service, ServiceInfo } from "../../common";
+import { Service } from "../../common";
 
 export interface IRegistryStorage {
   /**
@@ -22,7 +22,7 @@ export interface IRegistryStorage {
    * Retrieves all registered service instances.
    * If a specific service name is provided, only return instances of that service.
    */
-  getServices(serviceName?: string): Promise<Record<string, ServiceInfo[]>>;
+  getServices(serviceName?: string): Promise<Record<string, Service[]>>;
 
   /**
    * Generates a unique ID for a given service instance,
@@ -51,5 +51,5 @@ export interface IRegistryStorage {
    * Optionally retrieves a single instance by its ID.
    * Useful when status or metadata needs to be fetched individually.
    */
-  getInstance?(key: string, instanceId: string): Promise<ServiceInfo | undefined>;
+  getInstance?(key: string, instanceId: string): Promise<Service | undefined>;
 }

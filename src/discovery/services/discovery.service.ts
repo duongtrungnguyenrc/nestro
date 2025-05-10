@@ -1,8 +1,8 @@
 import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, Logger } from "@nestjs/common";
 
-import { buildHttpUrl, debugLog, ServiceInfo } from "../../common";
 import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "../constants";
 import { FailureTrackerService } from "./failure-tracker.service";
+import { buildHttpUrl, debugLog, Service } from "../../common";
 import { ResponseTimeStrategy } from "../loadbalancing";
 import { SERVER_INFO, ServerInfo } from "../../client";
 import type { LoadBalancingConfigs } from "../types";
@@ -11,7 +11,7 @@ import { ILoadBalancer } from "../interfaces";
 @Injectable()
 export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DiscoveryService.name);
-  private instances: Map<string, ServiceInfo[]> = new Map();
+  private instances: Map<string, Service[]> = new Map();
   private refreshIntervalId: NodeJS.Timeout;
   private serverBaseUrl: string;
 
@@ -56,7 +56,7 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
         throw new Error(`Failed to fetch services: ${response.statusText}`);
       }
 
-      const services = (await response.json()) as Record<string, ServiceInfo[]>;
+      const services = (await response.json()) as Record<string, Service[]>;
 
       // Update the service registry
       this.instances.clear();
@@ -81,7 +81,7 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
   /**
    * Gets all instances for a specific service
    */
-  getInstances(serviceName: string): ServiceInfo[] {
+  getInstances(serviceName: string): Service[] {
     return this.instances.get(serviceName) || [];
   }
 
@@ -112,7 +112,7 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
     return `${baseUrl}${path}`;
   }
 
-  async executeWithRetry<T>(serviceName: string, callback: (instance: ServiceInfo) => Promise<T> | T): Promise<T> {
+  async executeWithRetry<T>(serviceName: string, callback: (instance: Service) => Promise<T> | T): Promise<T> {
     const instances = this.getInstances(serviceName);
 
     if (!instances || instances.length === 0) {
@@ -189,7 +189,7 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
     throw lastError || new Error(`All instances for service ${serviceName} failed`);
   }
 
-  private getInstanceId(instance: ServiceInfo): string {
+  private getInstanceId(instance: Service): string {
     return `${instance.name}:${instance.host}:${instance.port}`;
   }
 }

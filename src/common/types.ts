@@ -44,27 +44,12 @@ export type ServiceConfig = Partial<Instance> & {
  *
  * @property name - The unique name of the service.
  * @property protocol - The communication protocol used by the service (e.g., HTTP or HTTPS).
+ * @property status - The instance status of service (ON, OFF)
  */
 export type Service = Instance & {
-  name: string; // Unique service name
-  protocol: HttpProtocols; // communication protocol (http/https)
-};
-
-/**
- * Represents a service instance with additional metadata.
- *
- * @extends Service
- *
- * @property {InstanceStatus} status - The current status of the service instance.
- * @property {number} timestamp - The timestamp indicating when the instance was created or updated.
- * @property {number} lastHeartbeatAt - The timestamp of the last received heartbeat from the instance.
- * @property {number} missedHeartbeats - The number of consecutive heartbeats that have been missed.
- */
-export type ServiceInfo = Service & {
+  name: string;
+  protocol: HttpProtocols;
   status: InstanceStatus;
-  timestamp: number;
-  lastHeartbeatAt: number;
-  missedHeartbeats: number;
 };
 
 /**

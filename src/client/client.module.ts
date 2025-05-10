@@ -18,6 +18,7 @@ export class ClientModule {
         host: config.client.host || getDefaultHost(),
         port: config.client.port,
         protocol: getHttpSecureProtocol(config.client.secure),
+        status: "ON",
       },
     };
 
