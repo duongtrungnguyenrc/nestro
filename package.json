@@ -1,7 +1,7 @@
 {
   "name": "@duongtrungnguyen/nestro",
   "author": "Duong Trung Nguyen",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Service registry for Nest JS",
   "license": "MIT",
   "engines": {
