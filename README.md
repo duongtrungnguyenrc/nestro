@@ -182,7 +182,6 @@ import { Module } from "@nestjs/common";
       .httpRoute({
         // proxy http request
         route: "/user/*", // Route to match
-        retryLimit: 1, // Retry limit for the request
         service: "user", // Target registered service
         target: "", // Force target path
         pathRewrite: { "^/api/user": "/" }, // Rewrite path

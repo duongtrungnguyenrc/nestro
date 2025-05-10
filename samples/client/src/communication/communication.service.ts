@@ -1,4 +1,4 @@
-import { CommunicateRequest, createCommunicationTemplate, DiscoveryService } from "@duongtrungnguyen/nestro";
+import { CommunicateRequest, createCommunicationTemplate, DiscoveryService, Service } from "@duongtrungnguyen/nestro";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()

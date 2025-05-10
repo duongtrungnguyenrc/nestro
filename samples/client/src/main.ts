@@ -1,9 +1,9 @@
-import { createNestroApplication } from "@duongtrungnguyen/nestro";
+import { createNestroApplication, NestroApplication } from "@duongtrungnguyen/nestro";
 
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await createNestroApplication(AppModule, {
+  const app: NestroApplication = await createNestroApplication(AppModule, {
     server: {
       host: "localhost", // Server host
       port: 4444, // Server port (Default: 4444)
@@ -14,17 +14,20 @@ async function bootstrap() {
       host: "localhost", // Service instance host
       port: 3001, // Service instance port
       secure: process.env.NODE_ENV === "production", // Service instance secure
-      heartbeatInterval: 10000, // Heartbeat interval in milliseconds
+      metadata: {
+        rpcURL: "grpc://sample.com",
+      },
     },
     security: {
-      privateKeyPath: "./private.pem", // private server generated key path
-      publicKeyPath: "./public.pem", // public server generated key path
+      privateKeyPath: "~/keys/private.pem", // private server generated key path
+      publicKeyPath: "~keys/public.pem", // public server generated key path
     },
     loadbalancing: {
       strategy: "round-robin", // load balancing strategy: [random, round-robin, least-connections]
       refreshInterval: 10000, // refresh interval in milliseconds
     },
   });
+
   await app.listen();
 }
 bootstrap();
