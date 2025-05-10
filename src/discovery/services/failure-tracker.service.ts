@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
-import { debugWarn, ServiceInstance } from "../../common";
+import { debugWarn, ServiceInfo } from "../../common";
 
 @Injectable()
 export class FailureTrackerService {
@@ -10,7 +10,7 @@ export class FailureTrackerService {
   /**
    * Mark an instance as temporarily failed
    */
-  markAsFailed(instance: ServiceInstance): void {
+  markAsFailed(instance: ServiceInfo): void {
     const instanceId = this.getInstanceId(instance);
     this.failedInstances.set(instanceId, Date.now() + 30000);
     debugWarn(FailureTrackerService.name, `Instance ${instanceId} marked as temporarily failed`);
@@ -19,7 +19,7 @@ export class FailureTrackerService {
   /**
    * Check if an instance is currently marked as failed
    */
-  isMarkedAsFailed(instance: ServiceInstance): boolean {
+  isMarkedAsFailed(instance: ServiceInfo): boolean {
     const instanceId = this.getInstanceId(instance);
     const failureTime = this.failedInstances.get(instanceId);
 
@@ -42,7 +42,7 @@ export class FailureTrackerService {
   /**
    * Get all available (non-failed) instances
    */
-  getAvailableInstances(instances: ServiceInstance[]): ServiceInstance[] {
+  getAvailableInstances(instances: ServiceInfo[]): ServiceInfo[] {
     return instances.filter((instance) => !this.isMarkedAsFailed(instance));
   }
 
@@ -54,9 +54,9 @@ export class FailureTrackerService {
   }
 
   /**
-   * Get instance ID from ServiceInstance
+   * Get instance ID from ServiceInfo
    */
-  private getInstanceId(instance: ServiceInstance): string {
+  private getInstanceId(instance: ServiceInfo): string {
     return `${instance.name}:${instance.host}:${instance.port}`;
   }
 }

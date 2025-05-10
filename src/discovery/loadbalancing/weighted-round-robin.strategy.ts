@@ -1,5 +1,5 @@
 import { ILoadBalancer } from "../interfaces";
-import { ServiceInstance } from "../../common";
+import { ServiceInfo } from "../../common";
 /**
  * Weighted Round-Robin load balancing strategy
  * Distributes requests based on instance weights
@@ -8,7 +8,7 @@ export class WeightedRoundRobinStrategy implements ILoadBalancer {
   private counters: Map<string, number> = new Map();
   private readonly defaultWeight = 1;
 
-  selectInstance(instances: ServiceInstance[]): ServiceInstance | null {
+  selectInstance(instances: ServiceInfo[]): ServiceInfo | null {
     if (!instances || instances.length === 0) {
       return null;
     }

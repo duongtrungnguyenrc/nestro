@@ -5,7 +5,7 @@ import { Request, Response } from "express";
 import { Socket } from "net";
 import { URL } from "url";
 
-import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, ServiceInstance } from "../../common";
+import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, ServiceInfo } from "../../common";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
 import { rewriteCookieProperty, setupOutgoing } from "../utils";
 import { BaseProxyService } from "./base-proxy.service";
@@ -45,7 +45,7 @@ export class HttpProxyService extends BaseProxyService {
 
       if (routeConfig.service) {
         // Use load balancing with service
-        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
+        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: ServiceInfo) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceHttpUrl);
           debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
 
@@ -230,7 +230,7 @@ export class HttpProxyService extends BaseProxyService {
     target: string | URL | ProxyTarget | undefined,
     req: IncomingMessage,
     res: ServerResponse | Socket,
-    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void,
+    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void
   ): (err: Error) => void {
     return (err: Error): void => {
       if (req.socket.destroyed && err.message.includes("ECONNRESET")) {

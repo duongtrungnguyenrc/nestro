@@ -12,41 +12,42 @@ export type WsPRotocols = "wss" | "ws";
 export type InstanceStatus = "ON" | "OFF";
 
 /**
- * Represents the configuration settings for an instance.
+ * Represents an instance with connection details and optional metadata.
  *
  * @property host - The hostname or IP address of the instance.
- * @property port - The port number on which the instance is running.
- * @property secure - Indicates whether the communication protocol is secure (true for HTTPS, false for HTTP).
+ * @property port - The port number used to connect to the instance.
+ * @property metadata - Optional key-value pairs containing additional information about the instance.
  */
-export type InstanceConfig = {
+export type Instance = {
   host: string; // instance host
   port: number; // instance port
-  secure: boolean; // communication protocol (http/https)
+  metadata?: Record<string, any>; // instance metadata
 };
 
 /**
- * Represents the configuration options for an instance.
+ * Represents the configuration for a service.
  *
- * @property host - The host address of the instance.
- * @property port - The port number used by the instance.
- * @property protocol - The communication protocol (e.g., HTTP or HTTPS).
- */
-export type InstanceOptions = {
-  host: string; // instance host
-  port: number; // instance port
-  protocol: HttpProtocols; // communication protocol (http/https)
-};
-
-/**
- * Represents a service with a unique name and optional metadata.
- * Extends the `InstanceOptions` type.
+ * @extends Partial<Instance>
  *
- * @property name - Unique service name.
- * @property metadata - Optional metadata associated with the service, represented as a record of key-value pairs.
+ * @property {string} name - Unique service name.
+ * @property {boolean} [secure] - Indicates the communication protocol.
+ *                                If true, uses HTTPS; otherwise, uses HTTP.
  */
-export type Service = InstanceOptions & {
+export type ServiceConfig = Partial<Instance> & {
   name: string; // Unique service name
-  metadata?: Record<string, any>;
+  secure?: boolean; // communication protocol (http/https)
+};
+
+/**
+ * Represents a service with a unique name and communication protocol.
+ * Extends the `Instance` type.
+ *
+ * @property name - The unique name of the service.
+ * @property protocol - The communication protocol used by the service (e.g., HTTP or HTTPS).
+ */
+export type Service = Instance & {
+  name: string; // Unique service name
+  protocol: HttpProtocols; // communication protocol (http/https)
 };
 
 /**
@@ -59,7 +60,7 @@ export type Service = InstanceOptions & {
  * @property {number} lastHeartbeatAt - The timestamp of the last received heartbeat from the instance.
  * @property {number} missedHeartbeats - The number of consecutive heartbeats that have been missed.
  */
-export type ServiceInstance = Service & {
+export type ServiceInfo = Service & {
   status: InstanceStatus;
   timestamp: number;
   lastHeartbeatAt: number;

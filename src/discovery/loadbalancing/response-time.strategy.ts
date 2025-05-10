@@ -1,4 +1,4 @@
-import { ServiceInstance } from "../../common";
+import { ServiceInfo } from "../../common";
 import { ILoadBalancer } from "../interfaces";
 
 /**
@@ -9,7 +9,7 @@ export class ResponseTimeStrategy implements ILoadBalancer {
   private responseTimes: Map<string, number[]> = new Map();
   private readonly maxSamples = 10; // Number of samples to keep for average calculation
 
-  selectInstance(instances: ServiceInstance[]): ServiceInstance | null {
+  selectInstance(instances: ServiceInfo[]): ServiceInfo | null {
     if (!instances || instances.length === 0) {
       return null;
     }
@@ -74,7 +74,7 @@ export class ResponseTimeStrategy implements ILoadBalancer {
     return sum / times.length;
   }
 
-  private getInstanceId(instance: ServiceInstance): string {
+  private getInstanceId(instance: ServiceInfo): string {
     return `${instance.name}:${instance.host}:${instance.port}`;
   }
 

@@ -1,10 +1,10 @@
 import { Injectable, OnModuleInit, Inject, BeforeApplicationShutdown } from "@nestjs/common";
 
-import { buildHttpUrl, debugLog, normalizeJson } from "../../common";
+import { buildHttpUrl, debugLog, normalizeJson, type Service } from "../../common";
 import { INSTANCE_INFO, SERVER_INFO } from "../constants";
-import type { ServerInfo, InstanceInfo } from "../types";
 import { RegisterResponse } from "../../server";
 import { KeyService } from "../../security";
+import type { ServerInfo } from "../types";
 
 @Injectable()
 export class ClientService implements OnModuleInit, BeforeApplicationShutdown {
@@ -12,11 +12,11 @@ export class ClientService implements OnModuleInit, BeforeApplicationShutdown {
   private serverBaseUrl: string;
 
   constructor(
-    @Inject(INSTANCE_INFO) private instanceInfo: InstanceInfo,
-    @Inject(SERVER_INFO) private readonly serverInfo: ServerInfo,
+    @Inject(INSTANCE_INFO) private instanceInfo: Service,
+    @Inject(SERVER_INFO) serverInfo: ServerInfo | URL,
     @Inject(KeyService) private readonly keyService: KeyService
   ) {
-    this.serverBaseUrl = buildHttpUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
+    this.serverBaseUrl = serverInfo instanceof URL ? serverInfo.toString() : buildHttpUrl(serverInfo.host, serverInfo.protocol, serverInfo.port);
   }
 
   async onModuleInit() {

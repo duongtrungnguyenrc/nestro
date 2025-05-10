@@ -7,7 +7,7 @@ import { URL } from "url";
 import type { ProxyCallbacks, ProxyOptions, ProxyRouteConfig } from "../types";
 import { DiscoveryService } from "../../discovery";
 import { hasEncryptedConnection } from "../utils";
-import { ServiceInstance } from "../../common";
+import { ServiceInfo } from "../../common";
 
 /**
  * Service responsible for proxying HTTP and WebSocket requests, including Socket.IO support.
@@ -29,9 +29,9 @@ export abstract class BaseProxyService {
    * @returns The resolved target URL.
    */
   protected resolveTargetUrl(
-    target: ((instance: ServiceInstance) => string) | string | undefined,
-    instance: ServiceInstance,
-    urlBuildAgent: (instance: ServiceInstance) => string,
+    target: ((instance: ServiceInfo) => string) | string | undefined,
+    instance: ServiceInfo,
+    urlBuildAgent: (instance: ServiceInfo) => string
   ): string {
     if (typeof target === "function") {
       return target(instance);
@@ -45,7 +45,7 @@ export abstract class BaseProxyService {
    * @param target - The target from routeConfig, can be a string or function.
    * @returns The resolved target URL.
    */
-  protected resolveDirectTarget(target: ((instance: ServiceInstance) => string) | string): string {
+  protected resolveDirectTarget(target: ((instance: ServiceInfo) => string) | string): string {
     if (typeof target === "function") {
       throw new Error("Target as a function requires a service instance, but no service was provided");
     }
@@ -65,7 +65,7 @@ export abstract class BaseProxyService {
     req: RawBodyRequest<Request> | Request,
     res: Response,
     options: ProxyOptions,
-    proxyFn: (req: IncomingMessage, res: ServerResponse | Socket, options: ProxyOptions) => void,
+    proxyFn: (req: IncomingMessage, res: ServerResponse | Socket, options: ProxyOptions) => void
   ): Promise<void> {
     return new Promise((resolve) => {
       proxyFn(req as IncomingMessage, res as ServerResponse, options);
@@ -148,7 +148,7 @@ export abstract class BaseProxyService {
     req: IncomingMessage,
     res: ServerResponse | Socket,
     target?: any,
-    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void,
+    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void
   ): void {
     if (onError) {
       onError(err, req, res, target);

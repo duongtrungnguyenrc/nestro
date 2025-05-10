@@ -5,7 +5,7 @@ import { Request, Response } from "express";
 import { Socket } from "net";
 import { URL } from "url";
 
-import { buildInstanceWsUrl, debugError, debugLog, debugWarn, ServiceInstance } from "../../common";
+import { buildInstanceWsUrl, debugError, debugLog, debugWarn, ServiceInfo } from "../../common";
 import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
 import { BaseProxyService } from "./base-proxy.service";
 import { setupOutgoing, setupSocket } from "../utils";
@@ -42,7 +42,7 @@ export class WsProxyService extends BaseProxyService {
 
       if (routeConfig.service) {
         // Use load balancing with service
-        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: ServiceInstance) => {
+        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: ServiceInfo) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceWsUrl);
           debugLog(WsProxyService.name, `Proxying WebSocket request from ${originalUrl} to ${targetUrl}`);
 

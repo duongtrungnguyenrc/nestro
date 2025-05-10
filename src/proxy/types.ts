@@ -3,7 +3,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import { Socket } from "net";
 import { URL } from "url";
 
-import { ServiceInstance } from "../common";
+import { ServiceInfo } from "../common";
 import { ProxyModuleBuilder } from "./proxy-module.builder";
 import { ProxyService } from "./services";
 
@@ -42,7 +42,7 @@ export type ProxyRouteConfig = {
   pathRewrite?: { [key: string]: string };
   timeout?: number;
   protocol?: "http" | "ws";
-  target?: ((instance: ServiceInstance) => string) | string;
+  target?: ((instance: ServiceInfo) => string) | string;
   requestHooks?: ProxyRequestHooks;
 };
 

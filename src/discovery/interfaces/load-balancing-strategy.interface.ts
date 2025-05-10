@@ -1,4 +1,4 @@
-import { ServiceInstance } from "../../common";
+import { ServiceInfo } from "../../common";
 
 /**
  * Interface for load balancing strategies
@@ -7,7 +7,7 @@ export interface ILoadBalancer {
   /**
    * Select an instance from the available instances
    */
-  selectInstance(instances: ServiceInstance[]): ServiceInstance | null;
+  selectInstance(instances: ServiceInfo[]): ServiceInfo | null;
 
   /**
    * Optional method to track when a connection starts

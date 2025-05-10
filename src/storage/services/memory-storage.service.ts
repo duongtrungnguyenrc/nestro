@@ -1,12 +1,12 @@
 import { Inject, OnModuleInit } from "@nestjs/common";
 
-import { debugLog, type Service, type ServiceInstance } from "../../common";
+import { debugLog, type Service, type ServiceInfo } from "../../common";
 import { IRegistryStorage } from "../interfaces";
 import type { StorageOptions } from "../types";
 import { STORAGE_OPTIONS } from "../constants";
 
 export class MemoryStorage implements IRegistryStorage, OnModuleInit {
-  private memoryStore = new Map<string, Map<string, ServiceInstance>>();
+  private memoryStore = new Map<string, Map<string, ServiceInfo>>();
   private cleanupInterval?: NodeJS.Timeout;
 
   constructor(@Inject(STORAGE_OPTIONS) private readonly options: StorageOptions) {}
@@ -66,12 +66,12 @@ export class MemoryStorage implements IRegistryStorage, OnModuleInit {
     debugLog("RegistryService", "Deregistered service from memory", { key, instanceId });
   }
 
-  async getServices(serviceName?: string): Promise<Record<string, ServiceInstance[]>> {
+  async getServices(serviceName?: string): Promise<Record<string, ServiceInfo[]>> {
     if (serviceName) {
       return { [serviceName]: Array.from(this.memoryStore.get(serviceName)?.values() || []) };
     }
 
-    const result: Record<string, ServiceInstance[]> = {};
+    const result: Record<string, ServiceInfo[]> = {};
     this.memoryStore.forEach((instances, name) => {
       result[name] = Array.from(instances.values());
     });
@@ -122,7 +122,7 @@ export class MemoryStorage implements IRegistryStorage, OnModuleInit {
     return `${instance.name}:${instance.host}:${instance.port}`;
   }
 
-  private getOrCreateInstances(key: string): Map<string, ServiceInstance> {
+  private getOrCreateInstances(key: string): Map<string, ServiceInfo> {
     let instances = this.memoryStore.get(key);
     if (!instances) {
       instances = new Map();

@@ -272,7 +272,7 @@ export class ApiController extends ProxyTemplate {
 For communication between multiple services. We using communication template to get best instance for communicate
 
 ```ts
-import { CommunicateRequest, createCommunicationTemplate, DiscoveryService, ServiceInstance } from "@duongtrungnguyen/nestro";
+import { CommunicateRequest, createCommunicationTemplate, DiscoveryService, ServiceInfo } from "@duongtrungnguyen/nestro";
 import { Injectable } from "@nestjs/common";
 
 @Injectable()
@@ -283,7 +283,7 @@ export class UserService extends createCommunicationTemplate("user") {
   }
 
   @CommunicateRequest()
-  async getUser(instance: ServiceInstance) {
+  async getUser(instance: ServiceInfo) {
     // do something with instance
   }
 }
