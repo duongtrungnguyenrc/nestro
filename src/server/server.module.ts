@@ -8,23 +8,31 @@ import { StorageModule } from "../storage";
 
 @Module({})
 export class ServerModule implements NestModule {
+  private static _config: NestroServerConfig = {};
+
   static register(config?: NestroServerConfig): DynamicModule {
+    this._config = config ?? {};
+
     const controllers: Array<Type<any>> = [RegistryController];
     const providers: Array<Provider> = [RegistryService];
+    const imports: Array<Type<any> | DynamicModule> = [StorageModule.register(this._config.storage ?? {})];
 
-    if (config?.enableRegistryDashboard ?? true) {
+    if (this._config.enableRegistryDashboard) {
       controllers.push(DashboardController);
+    }
+
+    if (this._config.enableSecurity) {
+      imports.push(
+        SecurityModule.register({
+          ...(this._config.security ?? {}),
+          initKeys: true,
+        })
+      );
     }
 
     return {
       module: ServerModule,
-      imports: [
-        StorageModule.register(config.storage ?? {}),
-        SecurityModule.register({
-          ...(config.security ?? {}),
-          initKeys: true,
-        }),
-      ],
+      imports,
       providers,
       controllers,
       exports: [RegistryService],
@@ -33,9 +41,11 @@ export class ServerModule implements NestModule {
   }
 
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(SecurityMiddleware)
-      .exclude({ path: "/nestro/services", method: RequestMethod.GET }, { path: "/nestro/dashboard(.*)", method: RequestMethod.ALL })
-      .forRoutes("/nestro/*");
+    if (ServerModule._config.enableSecurity) {
+      consumer
+        .apply(SecurityMiddleware)
+        .exclude({ path: "/nestro/services", method: RequestMethod.GET }, { path: "/nestro/dashboard(.*)", method: RequestMethod.ALL })
+        .forRoutes("/nestro/*");
+    }
   }
 }

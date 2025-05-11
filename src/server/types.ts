@@ -4,17 +4,19 @@ import { StorageConfigs } from "../storage";
 /**
  * Configuration options for the Nestro server.
  *
- * @template SecurityModuleConfigs - Defines the security-related configurations for the server.
- * @template StorageConfigs - Specifies the storage-related configurations.
+ * This type allows partial customization of the server's behavior
+ * by specifying configurations for various modules and features.
  *
- * @property {SecurityModuleConfigs} [security] - Security options for the server.
- * @property {StorageConfigs} [storage] - Storage configurations for the server.
- * @property {boolean} [enableRegistryDashboard] - Enables a web dashboard for service monitoring.
+ * @property security - Configuration options for the security module.
+ * @property storage - Configuration options for the storage module.
+ * @property enableRegistryDashboard - Optional flag to enable or disable the registry dashboard.
+ * @property enableSecurity - Optional flag to enable or disable security features.
  */
 export type NestroServerConfig = Partial<{
   security: SecurityModuleConfigs;
   storage: StorageConfigs;
   enableRegistryDashboard: boolean;
+  enableSecurity: boolean;
 }>;
 
 /**

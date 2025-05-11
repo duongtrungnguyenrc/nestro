@@ -1,4 +1,4 @@
-import type { InstanceStatus, Service } from "../common";
+import type { Service } from "../common";
 
 /**
  * Configuration options for the storage system.
@@ -8,14 +8,14 @@ import type { InstanceStatus, Service } from "../common";
  * @property {number} [evictionThreshold] - Optional threshold for triggering eviction of items from storage.
  */
 export type StorageOptions = {
-  heartbeatInterval?: number; 
+  heartbeatInterval?: number;
   cleanupTTL?: number;
   evictionThreshold?: number;
 };
 
 /**
  * Represents a partial configuration for storage options.
- * 
+ *
  * This type allows specifying only a subset of the properties
  * defined in `StorageOptions`, making it flexible for use cases
  * where not all options need to be provided.

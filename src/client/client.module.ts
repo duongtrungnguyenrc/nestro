@@ -1,11 +1,11 @@
-import { Module, DynamicModule, ValueProvider } from "@nestjs/common";
+import { Module, DynamicModule, ValueProvider, Type, Provider } from "@nestjs/common";
 
 import { DEFAULT_SERVER_PORT, getHttpSecureProtocol, Service } from "../common";
 import type { NestroClientConfig, ServerConfig, ServerInfo } from "./types";
-import { INSTANCE_INFO, SERVER_INFO } from "./constants";
+import { CLIENT_SERVICE, INSTANCE_INFO, SERVER_INFO } from "./constants";
+import { PlainClientService, SecureClientService } from "./services";
 import { DiscoveryModule } from "../discovery";
 import { SecurityModule } from "../security";
-import { ClientService } from "./services";
 import { getDefaultHost } from "./utils";
 
 @Module({})
@@ -24,10 +24,26 @@ export class ClientModule {
 
     const nestroServerInfoProvider: ValueProvider = ClientModule.buildServerConfig(config.server);
 
+    const imports: Array<Type<any> | DynamicModule> = [DiscoveryModule.register(config.loadbalancing || {})];
+    const providers: Array<Provider> = [instanceInfoProvider, nestroServerInfoProvider];
+
+    if (config.enableSecurity) {
+      imports.push(SecurityModule.register(config.security || {}));
+      providers.push({
+        provide: CLIENT_SERVICE,
+        useClass: SecureClientService,
+      });
+    } else {
+      providers.push({
+        provide: CLIENT_SERVICE,
+        useClass: PlainClientService,
+      });
+    }
+
     return {
       module: ClientModule,
-      imports: [SecurityModule.register(config.security || {}), DiscoveryModule.register(config.loadbalancing || {})],
-      providers: [instanceInfoProvider, nestroServerInfoProvider, ClientService],
+      imports: imports,
+      providers: providers,
       exports: [SERVER_INFO, INSTANCE_INFO, DiscoveryModule],
       global: true,
     };

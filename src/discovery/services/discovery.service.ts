@@ -1,8 +1,8 @@
 import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, Logger } from "@nestjs/common";
 
+import { buildHttpUrl, debugLog, getServerURL, Service } from "../../common";
 import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "../constants";
 import { FailureTrackerService } from "./failure-tracker.service";
-import { buildHttpUrl, debugLog, Service } from "../../common";
 import { ResponseTimeStrategy } from "../loadbalancing";
 import { SERVER_INFO, ServerInfo } from "../../client";
 import type { LoadBalancingConfigs } from "../types";
@@ -18,10 +18,10 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(LOAD_BALANCING_CONFIGS) private readonly loadBalancingConfigs: LoadBalancingConfigs,
     @Inject(LOAD_BALANCER) private readonly loadBalancer: ILoadBalancer,
-    @Inject(SERVER_INFO) private readonly serverInfo: ServerInfo,
-    @Inject(FailureTrackerService) private readonly failureTracker: FailureTrackerService
+    @Inject(FailureTrackerService) private readonly failureTracker: FailureTrackerService,
+    @Inject(SERVER_INFO) serverInfo: ServerInfo
   ) {
-    this.serverBaseUrl = buildHttpUrl(this.serverInfo.host, this.serverInfo.protocol, this.serverInfo.port);
+    this.serverBaseUrl = getServerURL(serverInfo);
   }
 
   async onModuleInit() {

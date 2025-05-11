@@ -2,6 +2,7 @@ import { Logger } from "@nestjs/common";
 
 import { HttpProtocols, Service, WsPRotocols } from "./types";
 import { CLASS_REGEX } from "./constants";
+import { ServerInfo } from "../client";
 
 function canLog() {
   const isDevelopment = process.env.NODE_ENV != "production";
@@ -66,4 +67,8 @@ export function getHttpSecureProtocol(secure: boolean): HttpProtocols {
 
 export function isClass(target: any) {
   return typeof target === "function" && CLASS_REGEX.test(Function.prototype.toString.call(target));
+}
+
+export function getServerURL(server: ServerInfo | URL) {
+  return server instanceof URL ? server.toString() : buildHttpUrl(server.host, server.protocol, server.port);
 }

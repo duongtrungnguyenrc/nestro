@@ -45,16 +45,20 @@ export type ClientServiceConfig = {
   client: ServiceConfig; // Instance configuration
 };
 
+
 /**
- * Configuration options for the Nestro client.
- *
+ * Configuration type for the Nestro client.
+ * 
  * This type extends the `ClientServiceConfig` and includes additional
- * optional configurations for security and load balancing.
- *
- * @property security - Optional configuration for the security module.
+ * optional configurations for security, load balancing, and a flag
+ * to enable or disable security features.
+ * 
+ * @property security - Optional configuration for security modules.
  * @property loadbalancing - Optional configuration for load balancing.
+ * @property enableSecurity - Optional flag to enable or disable security features.
  */
 export type NestroClientConfig = ClientServiceConfig & {
-  security?: SecurityModuleConfigs; // Security module configuration
+  security?: SecurityModuleConfigs;
   loadbalancing?: LoadBalancingConfigs;
+  enableSecurity?: boolean;
 };

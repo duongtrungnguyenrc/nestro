@@ -27,7 +27,7 @@ export async function createNestroServer(
 
   const app = await NestFactory.create<NestExpressApplication>(wrappedModule, applicationOptions);
 
-  if (options.enableRegistryDashboard) {
+  if (options?.enableRegistryDashboard) {
     hbs.registerPartials(path.join(__dirname, "..", "..", "resources", "views", "partials"));
     app.useStaticAssets(path.join(__dirname, "..", "..", "resources", "static"));
     app.setBaseViewsDir(path.join(__dirname, "..", "..", "resources", "views"));
