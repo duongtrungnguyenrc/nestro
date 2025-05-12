@@ -1,7 +1,6 @@
 import { networkInterfaces } from "os";
 import * as net from "net";
 
-import { DiscoveryService } from "../discovery";
 import { DEFAULT_HOST } from "../common";
 
 export async function getFreePort(): Promise<number> {
@@ -29,21 +28,3 @@ export function getDefaultHost() {
 
   return networkinfo["lo0"]?.[0]?.address || DEFAULT_HOST;
 }
-
-export abstract class CommunicationTemplate {
-  _discoveryService: DiscoveryService;
-
-  constructor(discoveryService: DiscoveryService) {
-    this._discoveryService = discoveryService;
-  }
-}
-
-export const createCommunicationTemplate = (target: string) => {
-  return class CommunicationTemplateWithService extends CommunicationTemplate {
-    targetService: string = target;
-
-    constructor(discoveryService: DiscoveryService) {
-      super(discoveryService);
-    }
-  };
-};

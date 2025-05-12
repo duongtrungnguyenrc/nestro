@@ -1,5 +1,5 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { Module, NestApplicationOptions } from "@nestjs/common";
+import { Module, NestApplicationOptions, Type } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import * as path from "path";
 import * as hbs from "hbs";
@@ -9,7 +9,7 @@ import { type NestroApplication } from "../common";
 import type { NestroServerConfig } from "./types";
 import { ServerModule } from "./server.module";
 
-function wrapModuleWithRegistryServer(AppModule: any, options?: NestroServerConfig): any {
+function wrapModuleWithRegistryServer(AppModule: Type<any>, options?: NestroServerConfig): Type<any> {
   @Module({
     imports: [ServerModule.register(options), AppModule],
   })
@@ -19,7 +19,7 @@ function wrapModuleWithRegistryServer(AppModule: any, options?: NestroServerConf
 }
 
 export async function createNestroServer(
-  AppModule: any,
+  AppModule: Type<any>,
   options?: NestroServerConfig,
   applicationOptions?: NestApplicationOptions
 ): Promise<NestroApplication> {

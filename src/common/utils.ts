@@ -41,8 +41,22 @@ export function debugError(context: string, message: string, data?: any) {
   }
 }
 
-export function normalizeJson(data: object): string {
-  return JSON.stringify(data, Object.keys(data).sort(), 0);
+export function normalizeJson(data: any): string {
+  function sortKeys(obj: any): any {
+    if (Array.isArray(obj)) {
+      return obj.map(sortKeys);
+    } else if (obj !== null && typeof obj === "object") {
+      return Object.keys(obj)
+        .sort()
+        .reduce((acc, key) => {
+          acc[key] = sortKeys(obj[key]);
+          return acc;
+        }, {} as any);
+    }
+    return obj;
+  }
+
+  return JSON.stringify(sortKeys(data));
 }
 
 export function buildInstanceHttpUrl(instance: Service) {

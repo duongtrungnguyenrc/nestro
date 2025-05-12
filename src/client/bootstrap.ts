@@ -1,5 +1,5 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { Module, NestApplicationOptions } from "@nestjs/common";
+import { Module, NestApplicationOptions, Type } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
 import { debugLog, type NestroApplication } from "../common";
@@ -7,7 +7,7 @@ import type { NestroClientConfig } from "./types";
 import { ClientModule } from "./client.module";
 import { getFreePort } from "./utils";
 
-function wrapModuleWithRegistry(AppModule: any, config: NestroClientConfig): any {
+function wrapModuleWithRegistry(AppModule: Type<any>, config: NestroClientConfig): Type<any> {
   @Module({
     imports: [ClientModule.register(config), AppModule],
   })
@@ -17,7 +17,7 @@ function wrapModuleWithRegistry(AppModule: any, config: NestroClientConfig): any
 }
 
 export async function createNestroApplication(
-  AppModule: any,
+  AppModule: Type<any>,
   config: NestroClientConfig,
   applicationOptions?: NestApplicationOptions
 ): Promise<NestroApplication> {

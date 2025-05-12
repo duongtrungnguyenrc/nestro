@@ -34,7 +34,8 @@ export class DashboardController {
       name,
       host,
       port: parseInt(port, 10),
-      protocol: "http", // Skip syntax check
+      protocol: "http",
+      status: "ON"
     });
 
     return { success: true };

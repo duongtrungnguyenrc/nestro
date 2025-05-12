@@ -1,5 +1,5 @@
+import { CommunicationTemplate } from "../communication-template";
 import { DiscoveryService } from "../../discovery";
-import { CommunicationTemplate } from "../utils";
 import { type Service } from "../../common";
 
 export function CommunicateRequest(serviceName?: string) {
