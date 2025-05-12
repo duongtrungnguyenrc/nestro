@@ -2,10 +2,10 @@ import { DiscoveryService } from "../discovery";
 
 export abstract class CommunicationTemplate {
   _discoveryService: DiscoveryService;
-  serviceName: string;
+  targetService: string;
 
-  constructor(discoveryService: DiscoveryService, serviceName: string) {
+  constructor(discoveryService: DiscoveryService, targetService: string) {
     this._discoveryService = discoveryService;
-    this.serviceName = serviceName;
+    this.targetService = targetService;
   }
 }
