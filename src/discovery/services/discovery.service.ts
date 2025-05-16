@@ -1,6 +1,6 @@
-import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, Logger } from "@nestjs/common";
+import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, ServiceUnavailableException } from "@nestjs/common";
 
-import { buildHttpUrl, debugLog, getServerURL, Service } from "../../common";
+import { buildHttpUrl, debugError, debugLog, debugWarn, getServerURL, Service } from "../../common";
 import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "../constants";
 import { FailureTrackerService } from "./failure-tracker.service";
 import { ResponseTimeStrategy } from "../loadbalancing";
@@ -10,7 +10,6 @@ import { ILoadBalancer } from "../interfaces";
 
 @Injectable()
 export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(DiscoveryService.name);
   private instances: Map<string, Service[]> = new Map();
   private refreshIntervalId: NodeJS.Timeout;
   private serverBaseUrl: string;
@@ -74,7 +73,7 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
 
       debugLog("DiscoveryService", `Registry refreshed with ${this.instances.size} services`);
     } catch (error) {
-      this.logger.error(`Failed to refresh registry: ${error.message}`);
+      debugError(DiscoveryService.name, `Failed to refresh registry: ${error.message}`);
     }
   }
 
@@ -92,38 +91,38 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
     const instances = this.getInstances(serviceName);
 
     if (!instances || instances.length === 0) {
-      throw new Error(`No instances available for service: ${serviceName}`);
+      throw new ServiceUnavailableException(`No instances available for service: ${serviceName}`);
     }
 
     // Get available (non-failed) instances
     const availableInstances = this.failureTracker.getAvailableInstances(instances);
 
     if (availableInstances.length === 0) {
-      throw new Error(`All instances for service ${serviceName} are currently marked as failed`);
+      throw new ServiceUnavailableException(`All instances for service ${serviceName} are currently marked as failed`);
     }
 
     const selectedInstance = this.loadBalancer.selectInstance(availableInstances);
 
     if (!selectedInstance) {
-      throw new Error(`Failed to select an instance for service: ${serviceName}`);
+      throw new ServiceUnavailableException(`Failed to select an instance for service: ${serviceName}`);
     }
 
     const baseUrl = buildHttpUrl(selectedInstance.host, selectedInstance.protocol, selectedInstance.port);
     return `${baseUrl}${path}`;
   }
 
-  async executeWithRetry<T>(serviceName: string, callback: (instance: Service) => Promise<T> | T): Promise<T> {
+  async executeWithRetry<T>(serviceName: string, callback: (instance: Service, tryAnotherInstance: VoidFunction) => Promise<T> | T): Promise<T> {
     const instances = this.getInstances(serviceName);
 
     if (!instances || instances.length === 0) {
-      throw new Error(`No instances available for service: ${serviceName}`);
+      throw new ServiceUnavailableException(`No instances available for service: ${serviceName}`);
     }
 
     // Get available (non-failed) instances
     let availableInstances = this.failureTracker.getAvailableInstances(instances);
 
     if (availableInstances.length === 0) {
-      this.logger.warn(`All instances for service ${serviceName} are marked as failed. Trying all instances.`);
+      debugWarn(DiscoveryService.name, `All instances for service ${serviceName} are marked as failed. Trying all instances.`);
       availableInstances = [...instances]; // Try all instances if all are marked as failed
     }
 
@@ -155,20 +154,9 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
       }
 
       const startTime = Date.now();
+      let shouldRetry = false;
 
-      try {
-        const result = await callback(selectedInstance);
-
-        // Record response time for response-time strategy
-        if (this.loadBalancer instanceof ResponseTimeStrategy) {
-          const responseTime = Date.now() - startTime;
-          this.loadBalancer.recordResponseTime(instanceId, responseTime);
-        }
-
-        return result;
-      } catch (error) {
-        this.logger.warn(`Request to instance ${instanceId} failed: ${error.message}`);
-
+      const tryAnotherInstance = async function () {
         // Mark this instance as temporarily failed
         this.failureTracker.markAsFailed(selectedInstance);
 
@@ -181,6 +169,26 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
         if (attempt < maxRetries - 1) {
           const delay = Math.min(100 * Math.pow(2, attempt), 1000);
           await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        shouldRetry = true;
+      };
+
+      try {
+        const result = await callback(selectedInstance, tryAnotherInstance);
+
+        // Record response time for response-time strategy
+        if (this.loadBalancer instanceof ResponseTimeStrategy) {
+          const responseTime = Date.now() - startTime;
+          this.loadBalancer.recordResponseTime(instanceId, responseTime);
+        }
+
+        if (!shouldRetry) {
+          return result;
+        }
+      } catch (error) {
+        if (!shouldRetry) {
+          throw error;
         }
       }
     }

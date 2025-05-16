@@ -12,7 +12,7 @@ export class RouteHandleService {
   constructor(
     @Inject(PROXY_ROUTES_CONFIG) private readonly routesConfig: Array<ProxyRouteConfig>,
     @Inject(GLOBAL_GUARDS) private readonly globalGuards: Array<Type<CanActivate>>,
-    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef
   ) {}
 
   /**

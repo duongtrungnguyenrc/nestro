@@ -1,6 +1,6 @@
 import { DynamicModule, MiddlewareConsumer, Module, NestMiddleware, NestModule, Type } from "@nestjs/common";
 
-import type { HookRoute, IRoutingConfig, ProxyRouteConfig, RoutingConfigFunction } from "./types";
+import type { HookRoute, IGatewayConfig, ProxyRouteConfig, RoutingConfigFunction } from "./types";
 import { ProxyModuleBuilder } from "./proxy-module.builder";
 import { ProxyController } from "./controllers";
 import { isClass } from "../common";
@@ -22,14 +22,14 @@ export class ProxyModule implements NestModule {
     return new ProxyModuleBuilder();
   }
 
-  static config(config: Type<IRoutingConfig> | RoutingConfigFunction): DynamicModule | Promise<DynamicModule> {
+  static config(config: Type<IGatewayConfig> | RoutingConfigFunction): DynamicModule | Promise<DynamicModule> {
     const builder = new ProxyModuleBuilder();
 
     if (!isClass(config)) {
       return (config as RoutingConfigFunction)(builder);
     }
 
-    const instance = new (config as Type<IRoutingConfig>)();
+    const instance = new (config as Type<IGatewayConfig>)();
 
     return instance.build(builder);
   }

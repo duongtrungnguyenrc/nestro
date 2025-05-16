@@ -65,10 +65,11 @@ export abstract class BaseProxyService {
     req: RawBodyRequest<Request> | Request,
     res: Response,
     options: ProxyOptions,
-    proxyFn: (req: IncomingMessage, res: ServerResponse | Socket, options: ProxyOptions) => void
+    proxyFn: (req: IncomingMessage, res: ServerResponse | Socket, options: ProxyOptions, callbacks?: ProxyCallbacks) => void,
+    callbacks?: ProxyCallbacks
   ): Promise<void> {
     return new Promise((resolve) => {
-      proxyFn(req as IncomingMessage, res as ServerResponse, options);
+      proxyFn(req as IncomingMessage, res as ServerResponse, options, callbacks);
       res.on("close", resolve).on("finish", resolve);
     });
   }

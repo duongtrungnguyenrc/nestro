@@ -1,19 +1,19 @@
-import { IncomingMessage, ServerResponse, request as httpRequest } from "http";
-import { Inject, Injectable, RawBodyRequest } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, RawBodyRequest, ServiceUnavailableException } from "@nestjs/common";
+import { ClientRequest, IncomingMessage, ServerResponse, request as httpRequest } from "http";
 import { request as httpsRequest } from "https";
 import { Request, Response } from "express";
-import { Socket } from "net";
 import { URL } from "url";
 
 import { buildInstanceHttpUrl, debugError, debugLog, debugWarn, Service } from "../../common";
-import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, ProxyTarget } from "../types";
+import type { ProxyCallbacks, ProxyRouteConfig, ProxyOptions, OutgoingOptions } from "../types";
 import { rewriteCookieProperty, setupOutgoing } from "../utils";
 import { BaseProxyService } from "./base-proxy.service";
 import { DiscoveryService } from "../../discovery";
+import { CONNECTION_ERROR_CODES } from "../constants";
 
 /**
- * Service responsible for proxying HTTP and WebSocket requests, including Socket.IO support.
- * Supports optional service-based load balancing or direct target usage.
+ * Service responsible for proxying HTTP and WebSocket requests.
+ * Supports service-based load balancing or direct target URL.
  */
 @Injectable()
 export class HttpProxyService extends BaseProxyService {
@@ -22,13 +22,13 @@ export class HttpProxyService extends BaseProxyService {
   }
 
   /**
-   * Proxies an HTTP request to the target server.
-   * Uses load balancing if service is provided, otherwise uses direct target.
+   * Proxies an HTTP request to a target server.
+   * Uses service discovery and load balancing if a service is specified,
+   * or directly proxies to a specific target URL.
    *
-   * @param req - The incoming HTTP request with raw body.
-   * @param res - The outgoing HTTP response.
-   * @param routeConfig - Configuration for the proxy route.
-   * @returns A promise that resolves when the request is complete.
+   * @param req - Incoming request with raw body.
+   * @param res - Express response object.
+   * @param routeConfig - Configuration for the route to determine target or service.
    */
   async proxyRequest(req: RawBodyRequest<Request>, res: Response, routeConfig: ProxyRouteConfig): Promise<void> {
     try {
@@ -44,16 +44,29 @@ export class HttpProxyService extends BaseProxyService {
       };
 
       if (routeConfig.service) {
-        // Use load balancing with service
-        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: Service) => {
+        // Load-balanced proxying using service discovery
+        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: Service, tryAnotherInstance) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceHttpUrl);
+
           debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
 
           const proxyOptions: ProxyOptions = { ...proxyOptionsBase, target: targetUrl };
-          await this.executeProxy(req, res, proxyOptions, this.handleProxy.bind(this));
+
+          await this.executeProxy(req, res, proxyOptions, this.handleProxy.bind(this), {
+            onConnectFailed: (err) => {
+              debugError(HttpProxyService.name, `Connection failed to ${targetUrl}: ${err.message}`);
+              tryAnotherInstance();
+            },
+            onError: (err) => {
+              if (this.isConnectionError(err)) {
+                debugError(HttpProxyService.name, `Connection error to ${targetUrl}: ${err.message}`);
+                tryAnotherInstance();
+              }
+            },
+          });
         });
       } else if (routeConfig.target) {
-        // Use direct target without load balancing
+        // Direct proxy to a static target
         const targetUrl = this.resolveDirectTarget(routeConfig.target);
         debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
 
@@ -68,40 +81,51 @@ export class HttpProxyService extends BaseProxyService {
   }
 
   /**
-   * Proxies an HTTP request to the target server.
+   * Checks if an error is related to connection issues
    *
-   * @param req - The incoming HTTP request.
-   * @param res - The outgoing HTTP response.
-   * @param options - Proxy configuration options.
-   * @param callbacks - Optional callbacks for lifecycle events.
+   * @param err - The error to check
+   * @returns boolean indicating if this is a connection error
    */
-  handleProxy(req: IncomingMessage, res: ServerResponse, options: ProxyOptions = {}, callbacks: ProxyCallbacks = {}): void {
-    try {
-      const normalizedOptions = this.normalizeOptions(options, req.url || "/");
-
-      if ((req.method === "DELETE" || req.method === "OPTIONS") && !req.headers["content-length"]) {
-        req.headers["content-length"] = "0";
-        delete req.headers["transfer-encoding"];
-      }
-
-      if (normalizedOptions.timeout) {
-        req.socket.setTimeout(normalizedOptions.timeout);
-      }
-
-      this.addForwardedHeaders(req, normalizedOptions.xfwd);
-      this.streamRequest(req, res, normalizedOptions, callbacks);
-    } catch (err) {
-      this.handleError(err as Error, req, res, undefined, callbacks.onError);
-    }
+  private isConnectionError(err: Error): boolean {
+    return (
+      CONNECTION_ERROR_CODES.some((code) => err.message.includes(code) || (err as any).code === code) ||
+      /connect|connection|timeout/i.test(err.message)
+    );
   }
 
   /**
-   * Streams an HTTP request to the target server.
+   * Internal handler for setting up and streaming a proxy request.
    *
-   * @param req - The incoming HTTP request.
-   * @param res - The outgoing HTTP response.
+   * @param req - Incoming request.
+   * @param res - Outgoing response.
+   * @param options - Proxy configuration.
+   * @param callbacks - Optional lifecycle event callbacks.
+   */
+  handleProxy(req: IncomingMessage, res: ServerResponse, options: ProxyOptions = {}, callbacks: ProxyCallbacks = {}): void {
+    const normalizedOptions = this.normalizeOptions(options, req.url || "/");
+
+    // Set content-length if missing for DELETE/OPTIONS
+    if ((req.method === "DELETE" || req.method === "OPTIONS") && !req.headers["content-length"]) {
+      req.headers["content-length"] = "0";
+      delete req.headers["transfer-encoding"];
+    }
+
+    // Set socket timeout if provided
+    if (normalizedOptions.timeout) {
+      req.socket.setTimeout(normalizedOptions.timeout);
+    }
+
+    this.addForwardedHeaders(req, normalizedOptions.xfwd);
+    this.streamRequest(req, res, normalizedOptions, callbacks);
+  }
+
+  /**
+   * Streams the HTTP request to the actual target using http/https modules.
+   *
+   * @param req - Incoming request.
+   * @param res - Outgoing response.
    * @param options - Normalized proxy options.
-   * @param callbacks - Optional callbacks for lifecycle events.
+   * @param callbacks - Optional lifecycle callbacks.
    */
   private streamRequest(req: IncomingMessage, res: ServerResponse, options: ProxyOptions, callbacks: ProxyCallbacks): void {
     callbacks.onStart?.(req, res, options.target);
@@ -109,46 +133,79 @@ export class HttpProxyService extends BaseProxyService {
     const targetProtocol = (options.target as URL).protocol === "https:" ? "https" : "http";
     const requestAgent = targetProtocol === "https" ? httpsRequest : httpRequest;
 
-    const proxyOptions = setupOutgoing({}, options, req);
+    const proxyOptions: OutgoingOptions = setupOutgoing({}, options, req);
 
-    const proxyReq = requestAgent(proxyOptions);
+    let proxyReq: ClientRequest;
 
-    proxyReq.on("socket", (socket) => callbacks.onProxyReq?.(proxyReq, req, res, socket));
-
-    if (options.proxyTimeout) {
-      proxyReq.setTimeout(options.proxyTimeout, () => proxyReq.destroy(new Error("Proxy timeout")));
+    try {
+      proxyReq = requestAgent(proxyOptions);
+    } catch (err) {
+      callbacks.onConnectFailed?.(err);
+      throw err; // Re-throw to be caught by the outer try-catch
     }
 
+    // Set up error handling early to catch connection errors
+    proxyReq.on("error", (err) => {
+      if (this.isConnectionError(err)) {
+        callbacks.onConnectFailed?.(err);
+      } else {
+        this.handleError(err, req, res, options.target, callbacks.onError);
+      }
+    });
+
+    // Optional callback for socket event
+    proxyReq.on("socket", (socket) => {
+      callbacks.onProxyReq?.(proxyReq, req, res, socket);
+
+      // Listen for socket errors that might indicate connection issues
+      socket.on("error", (err) => {
+        debugError(HttpProxyService.name, `Socket error: ${err.message}`);
+        callbacks.onConnectFailed?.(err);
+      });
+    });
+
+    // Set proxy timeout if specified
+    if (options.proxyTimeout) {
+      proxyReq.setTimeout(options.proxyTimeout, () => {
+        const timeoutError = new Error("Proxy timeout");
+        proxyReq.destroy(timeoutError);
+        callbacks.onConnectFailed?.(timeoutError);
+      });
+    }
+
+    // Abort handling
     req.on("aborted", () => {
-      debugLog(HttpProxyService.name, "Client request aborted");
+      debugError(HttpProxyService.name, "Client request aborted");
       proxyReq.destroy();
     });
 
-    const errorHandler = this.createErrorHandler(proxyReq, options.target, req, res, callbacks.onError);
-    req.on("error", errorHandler);
-    proxyReq.on("error", errorHandler);
+    // Error handling for the incoming request
+    req.on("error", (err) => {
+      debugError(HttpProxyService.name, `Client request error: ${err.message}`);
+      proxyReq.destroy();
+      this.handleError(err, req, res, options.target, callbacks.onError);
+    });
 
+    // Response event
     proxyReq.on("response", (proxyRes: IncomingMessage) => {
       callbacks.onProxyRes?.(proxyRes, req, res);
 
+      // Set status code and message
       res.statusCode = proxyRes.statusCode || 500;
       if (proxyRes.statusMessage) {
         res.statusMessage = proxyRes.statusMessage;
       }
 
-      for (const [key, value] of Object.entries(proxyRes.headers)) {
-        if (value !== undefined) {
-          try {
-            res.setHeader(key, value);
-          } catch (err) {
-            debugWarn(HttpProxyService.name, `Error setting header ${key}: ${err.message}`);
-          }
-        }
-      }
+      // Copy headers efficiently
+      this.copyHeaders(proxyRes, res);
 
+      // Rewrite cookie domain/path if configured
       this.rewriteCookies(res, options);
+
+      // Pipe the response
       proxyRes.pipe(res);
 
+      // Handle response events
       proxyRes.on("end", () => {
         callbacks.onEnd?.(req, res, proxyRes);
         debugLog(HttpProxyService.name, `Proxy completed - ${proxyRes.statusCode}`);
@@ -157,32 +214,61 @@ export class HttpProxyService extends BaseProxyService {
       proxyRes.on("error", (err) => {
         debugError(HttpProxyService.name, `Proxy response error: ${err.message}`);
         if (!res.headersSent) {
-          res.writeHead(502, { "Content-Type": "text/plain" });
-          res.end(`Proxy Error: ${err.message}`);
+          res.writeHead(HttpStatus.SERVICE_UNAVAILABLE, { "Content-Type": "text/plain" });
+          res.end(new ServiceUnavailableException(err.message).message);
         } else if (!res.finished) {
           res.end();
         }
       });
     });
 
-    if (options.buffer) {
-      if (Buffer.isBuffer(options.buffer) || typeof options.buffer === "string") {
-        proxyReq.write(options.buffer);
-        proxyReq.end();
-      } else {
-        proxyReq.write(JSON.stringify(options.buffer));
-        proxyReq.end();
+    // Send buffer or stream request
+    this.sendRequest(req, proxyReq, options.buffer);
+  }
+
+  /**
+   * Copies headers from proxy response to client response
+   *
+   * @param proxyRes - Proxy response
+   * @param res - Client response
+   */
+  private copyHeaders(proxyRes: IncomingMessage, res: ServerResponse): void {
+    Object.entries(proxyRes.headers).forEach(([key, value]) => {
+      if (value !== undefined) {
+        try {
+          res.setHeader(key, value);
+        } catch (err) {
+          debugWarn(HttpProxyService.name, `Error setting header ${key}: ${err.message}`);
+        }
       }
+    });
+  }
+
+  /**
+   * Sends the request body to the proxy
+   *
+   * @param req - Client request
+   * @param proxyReq - Proxy request
+   * @param buffer - Optional buffer to send
+   */
+  private sendRequest(req: IncomingMessage, proxyReq: ClientRequest, buffer?: Buffer | string | object): void {
+    if (buffer) {
+      if (Buffer.isBuffer(buffer) || typeof buffer === "string") {
+        proxyReq.write(buffer);
+      } else {
+        proxyReq.write(JSON.stringify(buffer));
+      }
+      proxyReq.end();
     } else {
       req.pipe(proxyReq);
     }
   }
 
   /**
-   * Extracts the request body buffer if present.
+   * Extracts the raw request buffer for proxying.
    *
-   * @param req - The incoming HTTP request.
-   * @returns The buffer or undefined.
+   * @param req - Incoming request.
+   * @returns Buffer, string, or undefined.
    */
   getRequestBuffer(req: RawBodyRequest<Request>): Buffer | string | undefined {
     if (req.rawBody) {
@@ -195,10 +281,10 @@ export class HttpProxyService extends BaseProxyService {
   }
 
   /**
-   * Rewrites cookies in the response based on configuration.
+   * Optionally rewrites cookie domain and path in the response.
    *
-   * @param res - The outgoing HTTP response.
-   * @param options - Proxy configuration options.
+   * @param res - Outgoing response.
+   * @param options - Proxy configuration.
    */
   private rewriteCookies(res: ServerResponse, options: ProxyOptions): void {
     const cookies = res.getHeader("set-cookie");
@@ -213,34 +299,5 @@ export class HttpProxyService extends BaseProxyService {
       const config = typeof options.cookiePathRewrite === "string" ? { "*": options.cookiePathRewrite } : options.cookiePathRewrite;
       res.setHeader("set-cookie", rewriteCookieProperty(cookies as string | string[], config, "path"));
     }
-  }
-
-  /**
-   * Creates an error handler for proxy requests.
-   *
-   * @param proxyReq - The proxy request object.
-   * @param target - The target server.
-   * @param req - The incoming HTTP request.
-   * @param res - The outgoing response or socket.
-   * @param onError - Optional custom error handler.
-   * @returns Error handler function.
-   */
-  private createErrorHandler(
-    proxyReq: any,
-    target: string | URL | ProxyTarget | undefined,
-    req: IncomingMessage,
-    res: ServerResponse | Socket,
-    onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: any) => void
-  ): (err: Error) => void {
-    return (err: Error): void => {
-      if (req.socket.destroyed && err.message.includes("ECONNRESET")) {
-        debugWarn(HttpProxyService.name, `Connection reset by peer: ${err.message}`);
-        proxyReq.destroy();
-        return;
-      }
-
-      debugError(HttpProxyService.name, `Proxy error: ${err}`);
-      this.handleError(err, req, res, target, onError);
-    };
   }
 }

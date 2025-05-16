@@ -1,4 +1,4 @@
-import { Inject, Injectable, RawBodyRequest } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, RawBodyRequest } from "@nestjs/common";
 import { Request, Response } from "express";
 
 import { RouteHandleService } from "./route-handle.service";
@@ -12,14 +12,14 @@ export class ProxyService {
   constructor(
     @Inject(HttpProxyService) private readonly httpProxyService: HttpProxyService,
     @Inject(WsProxyService) private readonly wsProxyService: WsProxyService,
-    @Inject(RouteHandleService) private readonly routeHandleService: RouteHandleService,
+    @Inject(RouteHandleService) private readonly routeHandleService: RouteHandleService
   ) {}
 
   async execute(req: RawBodyRequest<Request>, res: Response): Promise<void> {
     const routeConfig = this.routeHandleService.findMatchingRoute(req.url);
 
     if (!routeConfig) {
-      res.status(404).json({ error: "Route not found" });
+      res.status(404).json(new NotFoundException());
       return;
     }
 

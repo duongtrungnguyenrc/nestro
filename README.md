@@ -206,10 +206,10 @@ export class GatewayModule {}
 Or using config class
 
 ```ts
-import { IRouteConfig, ProxyModuleBuilder } from "@duongtrungnguyen/nestro";
+import { IGatewayConfig, ProxyModuleBuilder } from "@duongtrungnguyen/nestro";
 import { DynamicModule, RequestMethod } from "@nestjs/common";
 
-export class GatewayConfig implements IRouteConfig {
+export class GatewayConfig implements IGatewayConfig {
   configure(builder: ProxyModuleBuilder): DynamicModule {
     return (
       builder

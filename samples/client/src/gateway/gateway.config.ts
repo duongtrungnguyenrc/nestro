@@ -1,9 +1,9 @@
-import { IRoutingConfig, ProxyModuleBuilder } from "@duongtrungnguyen/nestro";
+import { IGatewayConfig, ProxyModuleBuilder } from "@duongtrungnguyen/nestro";
 import { DynamicModule, RequestMethod } from "@nestjs/common";
 
 import { AuthGuard } from "./auth.guard";
 
-export class GatewayConfig implements IRoutingConfig {
+export class GatewayConfig implements IGatewayConfig {
   build(builder: ProxyModuleBuilder): DynamicModule {
     return builder
       .httpRoute({

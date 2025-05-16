@@ -48,7 +48,7 @@ export type ProxyRouteConfig = {
 
 export type RoutingConfigFunction = (builder: ProxyModuleBuilder) => DynamicModule | Promise<DynamicModule>;
 
-export type IRoutingConfig = {
+export type IGatewayConfig = {
   build: RoutingConfigFunction;
 };
 
@@ -248,4 +248,6 @@ export interface ProxyCallbacks {
    * @param target - The target URL or proxy target being proxied to.
    */
   onError?: (err: Error, req: IncomingMessage, res: ServerResponse | Socket, target?: string | URL | ProxyTarget) => void;
+
+  onConnectFailed?: (err: Error) => void;
 }
