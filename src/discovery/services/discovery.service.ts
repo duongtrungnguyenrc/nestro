@@ -1,8 +1,7 @@
 import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, ServiceUnavailableException } from "@nestjs/common";
 
-import { buildHttpUrl, debugError, debugLog, debugWarn, getServerURL, Service } from "../../common";
+import { debugError, debugLog, getServerURL, Service } from "../../common";
 import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "../constants";
-import { FailureTrackerService } from "./failure-tracker.service";
 import { ResponseTimeStrategy } from "../loadbalancing";
 import { SERVER_INFO, ServerInfo } from "../../client";
 import type { LoadBalancingConfigs } from "../types";
@@ -17,14 +16,13 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(LOAD_BALANCING_CONFIGS) private readonly loadBalancingConfigs: LoadBalancingConfigs,
     @Inject(LOAD_BALANCER) private readonly loadBalancer: ILoadBalancer,
-    @Inject(FailureTrackerService) private readonly failureTracker: FailureTrackerService,
     @Inject(SERVER_INFO) serverInfo: ServerInfo
   ) {
     this.serverBaseUrl = getServerURL(serverInfo);
   }
 
   async onModuleInit() {
-    debugLog("DiscoveryService", "Initializing DiscoveryService...");
+    debugLog(DiscoveryService.name, "Initializing DiscoveryService...");
     await this.loadInstances();
     this.refreshIntervalId = setInterval(() => this.loadInstances(), this.loadBalancingConfigs.refreshInterval);
   }
@@ -33,14 +31,14 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
     if (this.refreshIntervalId) {
       clearInterval(this.refreshIntervalId);
     }
-    debugLog("DiscoveryService", "DiscoveryService stopped");
+    debugLog(DiscoveryService.name, "DiscoveryService stopped");
   }
 
   /**
    * Refreshes the service registry by fetching the latest instances from the server
    */
   async loadInstances(): Promise<void> {
-    debugLog("DiscoveryService", "Refreshing service registry");
+    debugLog(DiscoveryService.name, "Refreshing service registry");
 
     try {
       const response = await fetch(`${this.serverBaseUrl}/nestro/services`, {
@@ -67,11 +65,7 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
         }
       });
 
-      // Reset the failure tracker when registry is refreshed
-      // This allows failed instances to be tried again after a refresh
-      this.failureTracker.resetAll();
-
-      debugLog("DiscoveryService", `Registry refreshed with ${this.instances.size} services`);
+      debugLog(DiscoveryService.name, `Registry refreshed with ${this.instances.size} services`);
     } catch (error) {
       debugError(DiscoveryService.name, `Failed to refresh registry: ${error.message}`);
     }
@@ -84,68 +78,33 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
     return this.instances.get(serviceName) || [];
   }
 
-  /**
-   * Gets the URL for a service instance based on the load balancing strategy
-   */
-  async getServiceUrl(serviceName: string, path = ""): Promise<string> {
+  async discover<T>(serviceName: string, callback: (instance: Service, tryAnotherInstance: VoidFunction) => Promise<T> | T): Promise<T> {
     const instances = this.getInstances(serviceName);
 
     if (!instances || instances.length === 0) {
       throw new ServiceUnavailableException(`No instances available for service: ${serviceName}`);
-    }
-
-    // Get available (non-failed) instances
-    const availableInstances = this.failureTracker.getAvailableInstances(instances);
-
-    if (availableInstances.length === 0) {
-      throw new ServiceUnavailableException(`All instances for service ${serviceName} are currently marked as failed`);
-    }
-
-    const selectedInstance = this.loadBalancer.selectInstance(availableInstances);
-
-    if (!selectedInstance) {
-      throw new ServiceUnavailableException(`Failed to select an instance for service: ${serviceName}`);
-    }
-
-    const baseUrl = buildHttpUrl(selectedInstance.host, selectedInstance.protocol, selectedInstance.port);
-    return `${baseUrl}${path}`;
-  }
-
-  async executeWithRetry<T>(serviceName: string, callback: (instance: Service, tryAnotherInstance: VoidFunction) => Promise<T> | T): Promise<T> {
-    const instances = this.getInstances(serviceName);
-
-    if (!instances || instances.length === 0) {
-      throw new ServiceUnavailableException(`No instances available for service: ${serviceName}`);
-    }
-
-    // Get available (non-failed) instances
-    let availableInstances = this.failureTracker.getAvailableInstances(instances);
-
-    if (availableInstances.length === 0) {
-      debugWarn(DiscoveryService.name, `All instances for service ${serviceName} are marked as failed. Trying all instances.`);
-      availableInstances = [...instances]; // Try all instances if all are marked as failed
     }
 
     // Try each instance until success or we run out of instances
     let lastError: Error | null = null;
     const attemptedInstances = new Set<string>();
-    const maxRetries = availableInstances.length;
+    const maxRetries = instances.length;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       // Select an instance that hasn't been tried yet in this request
-      const remainingInstances = availableInstances.filter((instance) => !attemptedInstances.has(this.getInstanceId(instance)));
+      const remainingInstances = instances.filter((instance) => !attemptedInstances.has(this.getInstanceId(instance)));
 
       if (remainingInstances.length === 0) {
         break; // No more instances to try
       }
 
-      const selectedInstance = this.loadBalancer.selectInstance(remainingInstances);
+      const selectedInstance: Service = this.loadBalancer.selectInstance(remainingInstances);
 
       if (!selectedInstance) {
         break; // No instance selected
       }
 
-      const instanceId = this.getInstanceId(selectedInstance);
+      const instanceId: string = this.getInstanceId(selectedInstance);
       attemptedInstances.add(instanceId);
 
       // Track connection if strategy supports it
@@ -156,19 +115,13 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
       const startTime = Date.now();
       let shouldRetry = false;
 
-      const tryAnotherInstance = async function () {
+      const tryAnotherInstance = async () => {
         // Mark this instance as temporarily failed
-        this.failureTracker.markAsFailed(selectedInstance);
+        attemptedInstances.add(this.getInstanceId(selectedInstance));
 
         // Track connection end if strategy supports it
         if (this.loadBalancer.trackConnectionEnd) {
           this.loadBalancer.trackConnectionEnd(instanceId);
-        }
-
-        // Apply backoff before trying next instance
-        if (attempt < maxRetries - 1) {
-          const delay = Math.min(100 * Math.pow(2, attempt), 1000);
-          await new Promise((resolve) => setTimeout(resolve, delay));
         }
 
         shouldRetry = true;
@@ -193,8 +146,13 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    if (lastError) throw lastError;
+
+    const msg = `All instances for service ${serviceName} failed`;
+
     // If we've tried all available instances and still failed
-    throw lastError || new Error(`All instances for service ${serviceName} failed`);
+    debugError(DiscoveryService.name, msg);
+    throw new Error(msg);
   }
 
   private getInstanceId(instance: Service): string {

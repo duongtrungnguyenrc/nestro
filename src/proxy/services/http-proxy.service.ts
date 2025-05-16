@@ -45,7 +45,7 @@ export class HttpProxyService extends BaseProxyService {
 
       if (routeConfig.service) {
         // Load-balanced proxying using service discovery
-        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: Service, tryAnotherInstance) => {
+        await this.discoveryService.discover(routeConfig.service, async (instance: Service, tryAnotherInstance) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceHttpUrl);
 
           debugLog(HttpProxyService.name, `Proxying HTTP request from ${originalUrl} to ${targetUrl}`);
@@ -56,12 +56,6 @@ export class HttpProxyService extends BaseProxyService {
             onConnectFailed: (err) => {
               debugError(HttpProxyService.name, `Connection failed to ${targetUrl}: ${err.message}`);
               tryAnotherInstance();
-            },
-            onError: (err) => {
-              if (this.isConnectionError(err)) {
-                debugError(HttpProxyService.name, `Connection error to ${targetUrl}: ${err.message}`);
-                tryAnotherInstance();
-              }
             },
           });
         });
@@ -135,33 +129,20 @@ export class HttpProxyService extends BaseProxyService {
 
     const proxyOptions: OutgoingOptions = setupOutgoing({}, options, req);
 
-    let proxyReq: ClientRequest;
-
-    try {
-      proxyReq = requestAgent(proxyOptions);
-    } catch (err) {
-      callbacks.onConnectFailed?.(err);
-      throw err; // Re-throw to be caught by the outer try-catch
-    }
+    const proxyReq: ClientRequest = requestAgent(proxyOptions);
 
     // Set up error handling early to catch connection errors
     proxyReq.on("error", (err) => {
       if (this.isConnectionError(err)) {
         callbacks.onConnectFailed?.(err);
-      } else {
-        this.handleError(err, req, res, options.target, callbacks.onError);
       }
+
+      this.handleError(err, req, res, options.target, callbacks.onError);
     });
 
     // Optional callback for socket event
     proxyReq.on("socket", (socket) => {
       callbacks.onProxyReq?.(proxyReq, req, res, socket);
-
-      // Listen for socket errors that might indicate connection issues
-      socket.on("error", (err) => {
-        debugError(HttpProxyService.name, `Socket error: ${err.message}`);
-        callbacks.onConnectFailed?.(err);
-      });
     });
 
     // Set proxy timeout if specified

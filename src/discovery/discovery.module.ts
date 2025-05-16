@@ -1,7 +1,7 @@
 import { DynamicModule, FactoryProvider, Module, ValueProvider } from "@nestjs/common";
 
 import { DEFAULT_LOAD_BALANCING_REFRESH_INTERVAL, DEFAULT_LOAD_BALANCING_STRATEGY, LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "./constants";
-import { DiscoveryService, FailureTrackerService } from "./services";
+import { DiscoveryService } from "./services";
 import { LoadBalancingFactory } from "./loadbalancing";
 import { LoadBalancingConfigs } from "./types";
 import { ILoadBalancer } from "./interfaces";
@@ -28,7 +28,7 @@ export class DiscoveryModule {
 
     return {
       module: DiscoveryModule,
-      providers: [loadBalancingConfigProvider, loadBalancerProvider, FailureTrackerService, DiscoveryService],
+      providers: [loadBalancingConfigProvider, loadBalancerProvider, DiscoveryService],
       exports: [DiscoveryService],
     };
   }

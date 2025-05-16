@@ -43,22 +43,15 @@ export class WsProxyService extends BaseProxyService {
 
       if (routeConfig.service) {
         // Use load balancing with service
-        await this.discoveryService.executeWithRetry(routeConfig.service, async (instance: Service, tryAnotherInstance) => {
+        await this.discoveryService.discover(routeConfig.service, async (instance: Service, tryAnotherInstance) => {
           const targetUrl = this.resolveTargetUrl(routeConfig.target, instance, buildInstanceWsUrl);
           debugLog(WsProxyService.name, `Proxying WebSocket request from ${originalUrl} to ${targetUrl}`);
 
           const proxyOptions: ProxyOptions = { ...proxyOptionsBase, target: targetUrl };
 
           await this.executeProxy(req, res, proxyOptions, this.handleProxy.bind(this), {
-            onConnectFailed: (err) => {
-              debugError(WsProxyService.name, `WebSocket connection failed to ${targetUrl}: ${err.message}`);
+            onConnectFailed: () => {
               tryAnotherInstance();
-            },
-            onError: (err) => {
-              if (this.isConnectionError(err)) {
-                debugError(WsProxyService.name, `WebSocket connection error to ${targetUrl}: ${err.message}`);
-                tryAnotherInstance();
-              }
             },
           });
         });
@@ -178,13 +171,6 @@ export class WsProxyService extends BaseProxyService {
     proxyReq.on("error", onOutgoingError);
 
     proxyReq.on("response", (proxyRes: IncomingMessage) => {
-      // Check if the response indicates a server error that might warrant trying another instance
-      if (proxyRes.statusCode && proxyRes.statusCode >= 500 && callbacks.onConnectFailed) {
-        callbacks.onConnectFailed(new Error(`Server error: ${proxyRes.statusCode}`));
-        socket.end();
-        return;
-      }
-
       if (!proxyRes.headers.upgrade || proxyRes.headers.upgrade.toLowerCase() !== "websocket") {
         debugWarn(WsProxyService.name, "WebSocket upgrade failed, falling back to HTTP");
         socket.write(this.createHttpHeader(`HTTP/${proxyRes.httpVersion} ${proxyRes.statusCode} ${proxyRes.statusMessage || ""}`, proxyRes.headers));

@@ -11,7 +11,7 @@ export function CommunicateRequest(serviceName?: string) {
         throw new Error("Missing _discoveryService on class. Ensure it extends CommunicationTemplate.");
       }
 
-      return (this as CommunicationTemplate)?._discoveryService.executeWithRetry(serviceName || this.targetService, async (instance: Service) => {
+      return (this as CommunicationTemplate)?._discoveryService.discover(serviceName || this.targetService, async (instance: Service) => {
         return await originalMethod.apply(this, [instance, ...args]);
       });
     };

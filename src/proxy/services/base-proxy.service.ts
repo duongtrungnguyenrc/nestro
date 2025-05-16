@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "http";
-import { Inject, RawBodyRequest } from "@nestjs/common";
+import { HttpStatus, Inject, RawBodyRequest } from "@nestjs/common";
 import { Request, Response } from "express";
 import { Socket } from "net";
 import { URL } from "url";
@@ -154,8 +154,8 @@ export abstract class BaseProxyService {
     if (onError) {
       onError(err, req, res, target);
     } else if (res instanceof ServerResponse && !res.headersSent) {
-      res.writeHead(500, { "Content-Type": "text/plain" });
-      res.end(`Proxy Error: ${err}`);
+      res.writeHead(HttpStatus.SERVICE_UNAVAILABLE, { "Content-Type": "text/plain" });
+      res.end(`Proxy Error: ${err.message}`);
     } else if (res instanceof Socket && !res.destroyed) {
       res.end();
     }
