@@ -126,7 +126,7 @@ async function bootstrap() {
       port: 3001, // Service instance port
       secure: process.env.NODE_ENV === "production", // Service instance secure
       heartbeatInterval: 10000, // Heartbeat interval in milliseconds
-      swaggerJsonPath: "api-docs-json" // Use for client service
+      swaggerJsonPath: "api-docs-json" // Service json Swagger document path
     },
     security: {
       privateKeyPath: "./private.pem", // private server generated key path
