@@ -30,12 +30,14 @@ export class GatewaySwaggerMiddleware implements NestMiddleware {
     const docs: any[] = [];
 
     await Promise.all(
-      Array.from(services.values()).map(async (instances) => {
-        const doc = await this.fetchFirstValidDoc(
-          instances.map((s: Service) => `${buildInstanceHttpUrl(s)}/${s.swaggerJsonPath || "api-docs-json"}`)
-        );
-        if (doc) docs.push(doc);
-      })
+      Array.from(services.entries())
+        .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+        .map(async ([, instances]) => {
+          const doc = await this.fetchFirstValidDoc(
+            instances.map((s: Service) => `${buildInstanceHttpUrl(s)}/${s.swaggerJsonPath || "api-docs-json"}`)
+          );
+          if (doc) docs.push(doc);
+        })
     );
 
     const mergedDoc = this.mergeDocs(docs);
