@@ -15,10 +15,15 @@ export class GatewaySwaggerMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    const isPathMatch = this.gatewayOptions.swagger.path === req.path;
-    const isJsonPathMatch = this.gatewayOptions.swagger.jsonPath === req.path;
+    const requestPath = this._normalizePath(req.originalUrl);
+    const swaggerPath = this._normalizePath(this.gatewayOptions.swagger.path);
+    const swaggerJsonPath = this._normalizePath(this.gatewayOptions.swagger.jsonPath);
 
-    if (!isPathMatch && !isJsonPathMatch) return next();
+    if (swaggerPath === swaggerJsonPath) {
+      throw new Error("Swagger json document path must conflict with Swagger ui document path");
+    }
+
+    if (requestPath !== swaggerPath && requestPath !== swaggerJsonPath) return next();
 
     const services: Map<string, Service[]> = this.discoveryService.getServices();
 
@@ -35,14 +40,22 @@ export class GatewaySwaggerMiddleware implements NestMiddleware {
 
     const mergedDoc = this.mergeDocs(docs);
 
-    if (req.path === this.gatewayOptions.swagger.jsonPath) {
-      res.json(mergedDoc);
+    if (requestPath === swaggerJsonPath) {
+      return res.json(mergedDoc);
     }
 
     return setup(mergedDoc)(req, res, next);
   }
 
-  async fetchFirstValidDoc(urls: string[]): Promise<any | null> {
+  private _normalizePath(path?: string): string | undefined {
+    if (!path) return undefined;
+
+    if (!path.startsWith("/")) path = "/" + path;
+    if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+    return path;
+  }
+
+  private async fetchFirstValidDoc(urls: string[]): Promise<any | null> {
     for (const url of urls) {
       try {
         const res = await fetch(url);
@@ -57,7 +70,7 @@ export class GatewaySwaggerMiddleware implements NestMiddleware {
     return null;
   }
 
-  mergeDocs(docs: any[]): Record<string, any> {
+  private mergeDocs(docs: any[]): Record<string, any> {
     return docs.reduce((acc, doc, idx) => {
       if (idx === 0) {
         acc.openapi = "3.0.0";
