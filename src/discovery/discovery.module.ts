@@ -3,13 +3,13 @@ import { DynamicModule, FactoryProvider, Module, ValueProvider } from "@nestjs/c
 import { DEFAULT_LOAD_BALANCING_REFRESH_INTERVAL, DEFAULT_LOAD_BALANCING_STRATEGY, LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "./constants";
 import { DiscoveryService } from "./services";
 import { LoadBalancingFactory } from "./loadbalancing";
-import { LoadBalancingConfigs } from "./types";
+import { LoadBalancingConfig } from "./types";
 import { ILoadBalancer } from "./interfaces";
 
 @Module({})
 export class DiscoveryModule {
-  static register(config: LoadBalancingConfigs): DynamicModule {
-    const loadBalancingConfigProvider: ValueProvider<LoadBalancingConfigs> = {
+  static register(config: LoadBalancingConfig): DynamicModule {
+    const loadBalancingConfigProvider: ValueProvider<LoadBalancingConfig> = {
       provide: LOAD_BALANCING_CONFIGS,
       useValue: {
         ...config,
@@ -20,7 +20,7 @@ export class DiscoveryModule {
 
     const loadBalancerProvider: FactoryProvider<ILoadBalancer> = {
       provide: LOAD_BALANCER,
-      useFactory: (options: LoadBalancingConfigs) => {
+      useFactory: (options: LoadBalancingConfig) => {
         return LoadBalancingFactory.getStrategy(options.strategy);
       },
       inject: [LOAD_BALANCING_CONFIGS],

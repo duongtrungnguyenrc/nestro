@@ -4,17 +4,17 @@ import { debugError, debugLog, getServerURL, Service } from "../../common";
 import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "../constants";
 import { ResponseTimeStrategy } from "../loadbalancing";
 import { SERVER_INFO, ServerInfo } from "../../client";
-import type { LoadBalancingConfigs } from "../types";
+import type { LoadBalancingConfig } from "../types";
 import { ILoadBalancer } from "../interfaces";
 
 @Injectable()
 export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
-  private instances: Map<string, Service[]> = new Map();
+  private services: Map<string, Service[]> = new Map();
   private refreshIntervalId: NodeJS.Timeout;
   private serverBaseUrl: string;
 
   constructor(
-    @Inject(LOAD_BALANCING_CONFIGS) private readonly loadBalancingConfigs: LoadBalancingConfigs,
+    @Inject(LOAD_BALANCING_CONFIGS) private readonly loadBalancingConfigs: LoadBalancingConfig,
     @Inject(LOAD_BALANCER) private readonly loadBalancer: ILoadBalancer,
     @Inject(SERVER_INFO) serverInfo: ServerInfo
   ) {
@@ -56,26 +56,30 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
       const services = (await response.json()) as Record<string, Service[]>;
 
       // Update the service registry
-      this.instances.clear();
+      this.services.clear();
       Object.entries(services).forEach(([serviceName, instances]) => {
         // Filter out instances with status OFF
         const activeInstances = instances.filter((instance) => instance.status === "ON");
         if (activeInstances.length > 0) {
-          this.instances.set(serviceName, activeInstances);
+          this.services.set(serviceName, activeInstances);
         }
       });
 
-      debugLog(DiscoveryService.name, `Registry refreshed with ${this.instances.size} services`);
+      debugLog(DiscoveryService.name, `Registry refreshed with ${this.services.size} services`);
     } catch (error) {
       debugError(DiscoveryService.name, `Failed to refresh registry: ${error.message}`);
     }
+  }
+
+  getServices() {
+    return this.services;
   }
 
   /**
    * Gets all instances for a specific service
    */
   getInstances(serviceName: string): Service[] {
-    return this.instances.get(serviceName) || [];
+    return this.services.get(serviceName) || [];
   }
 
   async discover<T>(serviceName: string, callback: (instance: Service, tryAnotherInstance: VoidFunction) => Promise<T> | T): Promise<T> {

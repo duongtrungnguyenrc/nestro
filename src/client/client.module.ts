@@ -1,31 +1,44 @@
-import { Module, DynamicModule, ValueProvider, Type, Provider } from "@nestjs/common";
+import { Module, DynamicModule, ValueProvider, Type, Provider, NestModule, MiddlewareConsumer } from "@nestjs/common";
 
-import { DEFAULT_SERVER_PORT, getHttpSecureProtocol, Service } from "../common";
+import { GatewaySwaggerMiddleware, SwaggerAssetsMiddleware, SwaggerInitMiddleware } from "./middlewares";
+import { CLIENT_SERVICE, GATEWAY_OPTIONS, INSTANCE_INFO, SERVER_INFO } from "./constants";
 import type { NestroClientConfig, ServerConfig, ServerInfo } from "./types";
-import { CLIENT_SERVICE, INSTANCE_INFO, SERVER_INFO } from "./constants";
+import { DEFAULT_SERVER_PORT, getHttpSecureProtocol } from "../common";
 import { PlainClientService, SecureClientService } from "./services";
 import { DiscoveryModule } from "../discovery";
 import { SecurityModule } from "../security";
 import { getDefaultHost } from "./utils";
 
 @Module({})
-export class ClientModule {
-  static register(config: NestroClientConfig): DynamicModule {
-    const instanceInfoProvider: ValueProvider<Service> = {
-      provide: INSTANCE_INFO,
-      useValue: {
-        ...config.client,
-        host: config.client.host || getDefaultHost(),
-        port: config.client.port,
-        protocol: getHttpSecureProtocol(config.client.secure),
-        status: "ON",
-      },
-    };
+export class ClientModule implements NestModule {
+  private static _swaggerEndpoint: string;
 
-    const nestroServerInfoProvider: ValueProvider = ClientModule.buildServerConfig(config.server);
+  static register(config: NestroClientConfig): DynamicModule {
+    if (config.gateway?.swagger?.path) {
+      ClientModule._swaggerEndpoint = config.gateway.swagger.path;
+    }
 
     const imports: Array<Type<any> | DynamicModule> = [DiscoveryModule.register(config.loadbalancing || {})];
-    const providers: Array<Provider> = [instanceInfoProvider, nestroServerInfoProvider];
+    const providers: Array<Provider> = [
+      {
+        provide: INSTANCE_INFO,
+        useValue: {
+          ...config.client,
+          host: config.client.host || getDefaultHost(),
+          port: config.client.port,
+          protocol: getHttpSecureProtocol(config.client.secure),
+          status: "ON",
+        },
+      },
+      ClientModule.buildServerConfig(config.server),
+    ];
+
+    if (config.gateway) {
+      providers.push({
+        provide: GATEWAY_OPTIONS,
+        useValue: config.gateway,
+      });
+    }
 
     if (config.enableSecurity) {
       imports.push(SecurityModule.register(config.security || {}));
@@ -47,6 +60,12 @@ export class ClientModule {
       exports: [SERVER_INFO, INSTANCE_INFO, DiscoveryModule],
       global: true,
     };
+  }
+
+  configure(consumer: MiddlewareConsumer) {
+    if (ClientModule._swaggerEndpoint) {
+      consumer.apply(SwaggerInitMiddleware, SwaggerAssetsMiddleware, GatewaySwaggerMiddleware).forRoutes(ClientModule._swaggerEndpoint);
+    }
   }
 
   private static buildServerConfig(config: ServerConfig): ValueProvider {

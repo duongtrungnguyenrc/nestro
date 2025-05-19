@@ -21,7 +21,7 @@ export type LoadBalancingStrategy =
  * @property refreshInterval - The interval (in milliseconds) at which instances are refreshed.
  * @property maxRetries - The maximum number of retry attempts for failed instances.
  */
-export type LoadBalancingConfigs = {
+export type LoadBalancingConfig = {
   strategy?: LoadBalancingStrategy; // Load balancing strategy, default is round robin
   refreshInterval?: number; // Instance refresh interval
   maxRetries?: number; // Maximum retry limit for failed instances

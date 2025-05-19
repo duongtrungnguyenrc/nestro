@@ -1,6 +1,6 @@
 import type { ServiceConfig, HttpProtocols } from "../common";
-import type { LoadBalancingConfigs } from "../discovery";
-import type { SecurityModuleConfigs } from "../security";
+import type { LoadBalancingConfig } from "../discovery";
+import type { SecurityModuleConfig } from "../security";
 
 /**
  * Represents the configuration for a server.
@@ -45,20 +45,32 @@ export type ClientServiceConfig = {
   client: ServiceConfig; // Instance configuration
 };
 
+export type GatewayOptions = {
+  swagger?: {
+    path: string;
+    title: string;
+    version: string;
+    description: string;
+    jsonPath?: string;
+  };
+};
+
+export type GatewayConfig = GatewayOptions;
 
 /**
  * Configuration type for the Nestro client.
- * 
+ *
  * This type extends the `ClientServiceConfig` and includes additional
  * optional configurations for security, load balancing, and a flag
  * to enable or disable security features.
- * 
+ *
  * @property security - Optional configuration for security modules.
  * @property loadbalancing - Optional configuration for load balancing.
  * @property enableSecurity - Optional flag to enable or disable security features.
  */
 export type NestroClientConfig = ClientServiceConfig & {
-  security?: SecurityModuleConfigs;
-  loadbalancing?: LoadBalancingConfigs;
+  security?: SecurityModuleConfig;
+  loadbalancing?: LoadBalancingConfig;
   enableSecurity?: boolean;
+  gateway?: GatewayConfig;
 };

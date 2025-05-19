@@ -56,7 +56,8 @@
     "express": "^4.21.2",
     "handlebars": "^4.7.8",
     "hbs": "^4.2.0",
-    "path-to-regexp": "^8.2.0"
+    "path-to-regexp": "^8.2.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
@@ -64,6 +65,7 @@
     "@types/hbs": "^4.0.4",
     "@types/http-proxy": "^1.17.16",
     "@types/node": "^20.10.5",
+    "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^8.29.0",
     "@typescript-eslint/parser": "^8.29.0",
     "eslint": "^9.23.0",

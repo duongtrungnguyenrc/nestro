@@ -23,9 +23,9 @@ Nestro is a powerful service registry designed for NestJS applications. It strea
 - **Dynamic load balancing and service discovery:**  
   Distribute incoming requests using flexible strategies such as round-robin, random, or least-connections for optimal performance.
 - **Robust security:**  
-  Integrates key management and request validation to secure service communications.
-- **Modular Architecture:**  
-  Built with NestJS, Nestro promotes reusability and clean organization, making it easy to extend functionalities.
+  Integrates key management and request validation to secure service communications using RSA algorithm.
+- **Distributed Swagger:**  
+  Auto merge Swagger documentation.
 - **User-Friendly Dashboard:**  
   Monitor service instances in real-time, manage service dependencies, and perform administrative actions (e.g., deregistering services) directly through the dashboard.
 
@@ -126,6 +126,7 @@ async function bootstrap() {
       port: 3001, // Service instance port
       secure: process.env.NODE_ENV === "production", // Service instance secure
       heartbeatInterval: 10000, // Heartbeat interval in milliseconds
+      swaggerJsonPath: "api-docs-json" // Use for client service
     },
     security: {
       privateKeyPath: "./private.pem", // private server generated key path
@@ -134,6 +135,14 @@ async function bootstrap() {
     loadbalancing: {
       strategy: "round-robin", // load balancing strategy: [random, round-robin, least-connections]
       refreshInterval: 10000, // refresh interval in milliseconds
+    },
+    gateway: { // Use for api gateway service
+      swagger: {
+        path: "/docs", // Swagger document path
+        title: process.env.APP_TITLE, // Swagger app title
+        description: process.env.APP_DESCRIPTION, // Swagger app description
+        version: process.env.APP_VERSION, // swagger app version
+      },
     },
   });
   await app.listen();

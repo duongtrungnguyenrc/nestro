@@ -16,4 +16,4 @@ export type KeyServiceOptions = {
  * This type is a partial version of `KeyServiceOptions`, allowing
  * for optional customization of its properties.
  */
-export type SecurityModuleConfigs = Partial<KeyServiceOptions>;
+export type SecurityModuleConfig = Partial<KeyServiceOptions>;

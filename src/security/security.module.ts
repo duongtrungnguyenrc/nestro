@@ -2,13 +2,13 @@ import { Module, DynamicModule, ValueProvider } from "@nestjs/common";
 import * as path from "path";
 import os from "os";
 
-import type { KeyServiceOptions, SecurityModuleConfigs } from "./types";
+import type { KeyServiceOptions, SecurityModuleConfig } from "./types";
 import { KEY_SERVICE_OPTIONS } from "./constants";
 import { KeyService } from "./services";
 
 @Module({})
 export class SecurityModule {
-  static register(options?: SecurityModuleConfigs): DynamicModule {
+  static register(options?: SecurityModuleConfig): DynamicModule {
     const keyServiceOptionsProvider: ValueProvider<KeyServiceOptions> = {
       provide: KEY_SERVICE_OPTIONS,
       useValue: {

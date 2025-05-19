@@ -17,21 +17,23 @@ export type InstanceStatus = "ON" | "OFF";
  * @property host - The hostname or IP address of the instance.
  * @property port - The port number used to connect to the instance.
  * @property metadata - Optional key-value pairs containing additional information about the instance.
+ * @property openapiEndpoint - Optional. The endpoint for the OpenAPI specification.
  */
 export type Instance = {
   host: string; // instance host
   port: number; // instance port
   metadata?: Record<string, any>; // instance metadata
+  swaggerJsonPath?: string;
 };
 
 /**
- * Represents the configuration for a service.
+ * Represents the configuration options for a service.
  *
- * @extends Partial<Instance>
+ * @remarks
+ * This type extends a partial {@link Instance} and adds additional properties specific to service configuration.
  *
- * @property {string} name - Unique service name.
- * @property {boolean} [secure] - Indicates the communication protocol.
- *                                If true, uses HTTPS; otherwise, uses HTTP.
+ * @property name - Unique service name.
+ * @property secure - Optional. Indicates whether the communication protocol is secure (https) or not (http).
  */
 export type ServiceConfig = Partial<Instance> & {
   name: string; // Unique service name

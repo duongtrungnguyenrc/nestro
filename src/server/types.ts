@@ -1,4 +1,4 @@
-import { SecurityModuleConfigs } from "../security";
+import { SecurityModuleConfig } from "../security";
 import { StorageConfigs } from "../storage";
 
 /**
@@ -13,7 +13,7 @@ import { StorageConfigs } from "../storage";
  * @property enableSecurity - Optional flag to enable or disable security features.
  */
 export type NestroServerConfig = Partial<{
-  security: SecurityModuleConfigs;
+  security: SecurityModuleConfig;
   storage: StorageConfigs;
   enableRegistryDashboard: boolean;
   enableSecurity: boolean;
