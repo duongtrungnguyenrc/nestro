@@ -126,7 +126,7 @@ async function bootstrap() {
       port: 3001, // Service instance port
       secure: process.env.NODE_ENV === "production", // Service instance secure
       heartbeatInterval: 10000, // Heartbeat interval in milliseconds
-      swaggerJsonPath: "api-docs-json" // Service json Swagger document path
+      swaggerJsonPath: "api-docs-json", // Service json Swagger document path
     },
     security: {
       privateKeyPath: "./private.pem", // private server generated key path
@@ -136,7 +136,8 @@ async function bootstrap() {
       strategy: "round-robin", // load balancing strategy: [random, round-robin, least-connections]
       refreshInterval: 10000, // refresh interval in milliseconds
     },
-    gateway: { // Use for api gateway service
+    gateway: {
+      // Use for api gateway service
       swagger: {
         path: "/docs", // Swagger document path
         title: process.env.APP_TITLE, // Swagger app title
@@ -182,12 +183,12 @@ Now we can config route proxy using builder pattern. Nestro will automatically h
 ```ts
 /* nestro-gateway/gateway.module.ts */
 
-import { ProxyModule } from "@duongtrungnguyen/nestro";
+import { GatewayModule } from "@duongtrungnguyen/nestro";
 import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    ProxyModule.builder()
+    GatewayModule.builder()
       .httpRoute({
         // proxy http request
         route: "/user/*", // Route to match
@@ -215,11 +216,11 @@ export class GatewayModule {}
 Or using config class
 
 ```ts
-import { IGatewayConfig, ProxyModuleBuilder } from "@duongtrungnguyen/nestro";
+import { IGatewayConfig, GatewayConfigBuilder } from "@duongtrungnguyen/nestro";
 import { DynamicModule, RequestMethod } from "@nestjs/common";
 
 export class GatewayConfig implements IGatewayConfig {
-  configure(builder: ProxyModuleBuilder): DynamicModule {
+  configure(builder: GatewayConfigBuilder): DynamicModule {
     return (
       builder
         .httpRoute({
@@ -236,13 +237,13 @@ export class GatewayConfig implements IGatewayConfig {
 ```
 
 ```ts
-import { ProxyModule } from "@duongtrungnguyen/nestro";
+import { GatewayModule } from "@duongtrungnguyen/nestro";
 import { Module } from "@nestjs/common";
 
 import { GatewayConfig } from "@gateway.config";
 
 @Module({
-  imports: [ProxyModule.config(GatewayConfig)],
+  imports: [GatewayModule.config(GatewayConfig)],
 })
 export class AppModule {}
 ```

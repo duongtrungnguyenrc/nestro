@@ -3,9 +3,7 @@ import { IncomingMessage, ServerResponse } from "http";
 import { Socket } from "net";
 import { URL } from "url";
 
-import { Service } from "../common";
-import { ProxyModuleBuilder } from "./proxy-module.builder";
-import { ProxyService } from "./services";
+import { GatewayConfigBuilder } from "./config-builder";
 
 export type HookRoute = {
   path: string;
@@ -20,11 +18,6 @@ export type RequestHook<T> =
     }
   | Type<T>;
 
-export type ProxyRequestHooks = Partial<{
-  middlewares: Array<RequestHook<NestMiddleware>>;
-  guards: Array<RequestHook<CanActivate>>;
-}>;
-
 /**
  * Configuration for defining a proxy route.
  *
@@ -36,23 +29,18 @@ export type ProxyRequestHooks = Partial<{
  * @property timeout - An optional timeout value (in milliseconds) for the proxy request.
  * @property protocol - The protocol to use for the proxy, either "http" or "ws" (WebSocket).
  */
-export type ProxyRouteConfig = {
+export type GatewayRoutingConfig = {
   route: string;
   service?: string;
   pathRewrite?: { [key: string]: string };
   timeout?: number;
   protocol?: "http" | "ws";
-  target?: ((instance: Service) => string) | string;
-  requestHooks?: ProxyRequestHooks;
+  target?: string;
+  middlewares?: Array<RequestHook<NestMiddleware>>;
+  guards?: Array<RequestHook<CanActivate>>;
 };
 
-export type RoutingConfigFunction = (builder: ProxyModuleBuilder) => DynamicModule | Promise<DynamicModule>;
-
-export type IGatewayConfig = {
-  build: RoutingConfigFunction;
-};
-
-export type IProxyController = Type<ProxyService>;
+export type GatewayRoutingConfigFunction = (builder: GatewayConfigBuilder) => DynamicModule | Promise<DynamicModule>;
 
 /**
  * Represents the configuration options for a proxy target.

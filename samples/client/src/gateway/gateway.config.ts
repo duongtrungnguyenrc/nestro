@@ -1,10 +1,10 @@
-import { IGatewayConfig, ProxyModuleBuilder } from "@duongtrungnguyen/nestro";
+import { IGatewayConfig, GatewayConfigBuilder } from "@duongtrungnguyen/nestro";
 import { DynamicModule, RequestMethod } from "@nestjs/common";
 
 import { AuthGuard } from "./auth.guard";
 
 export class GatewayConfig implements IGatewayConfig {
-  build(builder: ProxyModuleBuilder): DynamicModule {
+  build(builder: GatewayConfigBuilder): DynamicModule {
     return builder
       .httpRoute({
         route: "/user/*path", // Route pattern

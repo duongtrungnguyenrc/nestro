@@ -1,20 +1,20 @@
-import { CanActivate, DynamicModule, NestMiddleware, Provider, Type, ValueProvider } from "@nestjs/common";
+import { CanActivate, DynamicModule, NestMiddleware, Provider, Type } from "@nestjs/common";
 
-import { HttpProxyService, ProxyService, RouteHandleService, WsProxyService } from "./services";
-import type { ProxyRouteConfig, ProxyRequestHooks, RequestHook } from "./types";
+import { HttpProxyService, GatewayService, RouteHandleService, WsProxyService } from "./services";
 import { GLOBAL_GUARDS, PROXY_ROUTES_CONFIG } from "./constants";
-import { ProxyController } from "./controllers";
-import { DEFAULT_PROTOCOL } from "../common";
-import { ProxyModule } from "./proxy.module";
+import type { GatewayRoutingConfig, RequestHook } from "./types";
+import { GatewayController } from "./controllers";
+import { GatewayModule } from "./gateway.module";
+import { DEFAULT_PROTOCOL } from "../../common";
 
 /**
  * Builder class for configuring proxy routes and middlewares.
  */
-export class ProxyModuleBuilder {
+export class GatewayConfigBuilder {
   private globalMiddlewares: Array<Type<NestMiddleware>> = [];
   private globalGuards: Array<Type<CanActivate>> = [];
-  private routes: Array<ProxyRouteConfig> = [];
-  private providers: Array<Provider> = [];
+  private routes: Array<GatewayRoutingConfig> = [];
+  private providers: Array<Provider> = [RouteHandleService, HttpProxyService, WsProxyService, GatewayService];
 
   /**
    * Adds a route configuration.
@@ -22,16 +22,13 @@ export class ProxyModuleBuilder {
    * @param config - The route configuration, including optional targetPath as string or function.
    * @returns This builder instance.
    */
-  route(config: ProxyRouteConfig): this {
+  private route(config: GatewayRoutingConfig): this {
     this.routes.push({
       ...config,
       protocol: config.protocol || DEFAULT_PROTOCOL, // Default to HTTP
     });
 
-    // Register providers from request hooks if any
-    if (config.requestHooks) {
-      this.registerRequestHookProviders(config.requestHooks);
-    }
+    this.registerRequestHookProviders(config);
 
     return this;
   }
@@ -42,7 +39,7 @@ export class ProxyModuleBuilder {
    * @param config - The route configuration without protocol.
    * @returns This builder instance.
    */
-  httpRoute(config: Omit<ProxyRouteConfig, "protocol">): this {
+  httpRoute(config: Omit<GatewayRoutingConfig, "protocol">): this {
     return this.route({ ...config, protocol: "http" });
   }
 
@@ -52,7 +49,7 @@ export class ProxyModuleBuilder {
    * @param config - The route configuration without protocol.
    * @returns This builder instance.
    */
-  wsRoute(config: Omit<ProxyRouteConfig, "protocol">): this {
+  wsRoute(config: Omit<GatewayRoutingConfig, "protocol">): this {
     return this.route({ ...config, protocol: "ws" });
   }
 
@@ -64,28 +61,30 @@ export class ProxyModuleBuilder {
    */
   useGlobalMiddleware(...middlewares: Array<Type<NestMiddleware>>): this {
     this.globalMiddlewares.push(...middlewares);
+
     return this;
   }
 
   useGlobalGuard(...guards: Array<Type<CanActivate>>): this {
     this.globalGuards.push(...guards);
+
     return this;
   }
 
   /**
    * Register providers from request hooks
    */
-  private registerRequestHookProviders(hooks: ProxyRequestHooks): void {
+  private registerRequestHookProviders(config: GatewayRoutingConfig): void {
     const extractProviders = <T>(items: RequestHook<T>[] = []) => {
       return items.map((hook) => (typeof hook === "function" ? hook : hook.instance));
     };
 
-    if (hooks.guards) {
-      this.providers.push(...extractProviders(hooks.guards));
+    if (config.guards) {
+      this.providers.push(...extractProviders(config.guards));
     }
 
-    if (hooks.middlewares) {
-      this.providers.push(...extractProviders(hooks.middlewares));
+    if (config.middlewares) {
+      this.providers.push(...extractProviders(config.middlewares));
     }
   }
 
@@ -95,24 +94,25 @@ export class ProxyModuleBuilder {
    * @returns A dynamic module configuration.
    */
   build(): DynamicModule {
-    ProxyModule.routes = this.routes;
-    ProxyModule.globalMiddlewares = this.globalMiddlewares;
+    GatewayModule.routes = this.routes;
+    GatewayModule.globalMiddlewares = this.globalMiddlewares;
 
-    const routesConfigProvider: ValueProvider<Array<ProxyRouteConfig>> = {
-      provide: PROXY_ROUTES_CONFIG,
-      useValue: this.routes,
-    };
-
-    const globalGuardsProvider: ValueProvider<Array<Type<CanActivate>>> = {
-      provide: GLOBAL_GUARDS,
-      useValue: this.globalGuards,
-    };
+    this.providers.push(
+      {
+        provide: PROXY_ROUTES_CONFIG,
+        useValue: this.routes,
+      },
+      {
+        provide: GLOBAL_GUARDS,
+        useValue: this.globalGuards,
+      }
+    );
 
     return {
-      module: ProxyModule,
-      controllers: [ProxyController],
-      providers: [routesConfigProvider, globalGuardsProvider, RouteHandleService, HttpProxyService, WsProxyService, ProxyService, ...this.providers],
-      exports: [RouteHandleService, HttpProxyService, WsProxyService, ProxyService],
+      module: GatewayModule,
+      controllers: [GatewayController],
+      providers: this.providers,
+      exports: this.providers,
     };
   }
 }

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, RawBodyRequest } from "@nestjs/common";
+import { HttpStatus, Inject, Injectable, RawBodyRequest } from "@nestjs/common";
 import { Request, Response } from "express";
 
 import { RouteHandleService } from "./route-handle.service";
@@ -8,30 +8,32 @@ import { isSocketRequest } from "../utils";
 import { ProxyOptions } from "../types";
 
 @Injectable()
-export class ProxyService {
+export class GatewayService {
   constructor(
     @Inject(HttpProxyService) private readonly httpProxyService: HttpProxyService,
     @Inject(WsProxyService) private readonly wsProxyService: WsProxyService,
     @Inject(RouteHandleService) private readonly routeHandleService: RouteHandleService
   ) {}
 
-  async execute(req: RawBodyRequest<Request>, res: Response): Promise<void> {
-    const routeConfig = this.routeHandleService.findMatchingRoute(req.url);
+  async proxyRequest(req: RawBodyRequest<Request>, res: Response): Promise<void> {
+    const routeConfig = this.routeHandleService.findMatchingRoute(req.path);
 
     if (!routeConfig) {
-      res.status(404).json(new NotFoundException());
+      res.status(HttpStatus.NOT_FOUND).json({
+        message: "Proxy failed because route not found",
+        timestamp: new Date().toISOString(),
+        statusCode: HttpStatus.NOT_FOUND,
+      });
+
       return;
     }
 
-    if (routeConfig.requestHooks?.guards) {
-      const isAllowed = await this.routeHandleService.checkGuards(routeConfig.requestHooks.guards, req, res);
+    const isAllowed = await this.routeHandleService.checkGuards(routeConfig.guards, req, res);
 
-      if (!isAllowed) return;
-    }
+    if (!isAllowed) return;
 
     if (isSocketRequest(req)) {
-      await this.wsProxyService.proxyRequest(req, res, routeConfig);
-      return;
+      return await this.wsProxyService.proxyRequest(req, res, routeConfig);
     }
 
     await this.httpProxyService.proxyRequest(req, res, routeConfig);

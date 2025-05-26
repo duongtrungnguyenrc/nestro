@@ -1,9 +1,9 @@
-import { ProxyModule } from "@duongtrungnguyen/nestro";
+import { GatewayModule } from "@duongtrungnguyen/nestro";
 import { Module } from "@nestjs/common";
 
 import { GatewayConfig } from "./gateway.config";
 
 @Module({
-  imports: [ProxyModule.config(GatewayConfig)],
+  imports: [GatewayModule.config(GatewayConfig)],
 })
 export class GatewayModule {}

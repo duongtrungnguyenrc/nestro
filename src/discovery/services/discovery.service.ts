@@ -1,7 +1,8 @@
-import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject, ServiceUnavailableException } from "@nestjs/common";
+import { Injectable, type OnModuleInit, type OnModuleDestroy, Inject } from "@nestjs/common";
 
 import { debugError, debugLog, getServerURL, Service } from "../../common";
 import { LOAD_BALANCER, LOAD_BALANCING_CONFIGS } from "../constants";
+import { DiscoveryError, DiscoveryErrorCode } from "../errors";
 import { ResponseTimeStrategy } from "../loadbalancing";
 import { SERVER_INFO, ServerInfo } from "../../client";
 import type { LoadBalancingConfig } from "../types";
@@ -86,11 +87,11 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
     const instances = this.getInstances(serviceName);
 
     if (!instances || instances.length === 0) {
-      throw new ServiceUnavailableException(`No instances available for service: ${serviceName}`);
+      throw new DiscoveryError(`Service ${serviceName} not found in registry`, DiscoveryErrorCode.SERVICE_NOT_FOUND);
     }
 
     // Try each instance until success or we run out of instances
-    let lastError: Error | null = null;
+    let lastError: DiscoveryError | null = null;
     const attemptedInstances = new Set<string>();
     const maxRetries = instances.length;
 
@@ -152,11 +153,7 @@ export class DiscoveryService implements OnModuleInit, OnModuleDestroy {
 
     if (lastError) throw lastError;
 
-    const msg = `All instances for service ${serviceName} failed`;
-
-    // If we've tried all available instances and still failed
-    debugError(DiscoveryService.name, msg);
-    throw new Error(msg);
+    throw new DiscoveryError(`All instances for ${serviceName} service failed`, DiscoveryErrorCode.ALL_INSTANCES_FAILED);
   }
 
   private getInstanceId(instance: Service): string {

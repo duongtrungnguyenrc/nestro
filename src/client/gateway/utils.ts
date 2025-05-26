@@ -5,7 +5,6 @@ import { URL } from "url";
 
 import { SSL_PROTOCOL_REGEX, UPGRADE_HEADER_REGEX, WEBSOCKET_UPGRADE_REGEX, SOCKET_IO_PATH_REGEX, WEBSOCKET_UPGRADE_HEADER } from "./constants";
 import { OutgoingOptions, ProxyOptions, ProxyTarget } from "./types";
-import { ProxyService } from "./services";
 
 /**
  * Configures outgoing options for a proxy request.
@@ -301,12 +300,4 @@ export function isSocketIORequest(req: IncomingMessage): boolean {
  */
 export function isSocketRequest(req: Request): boolean {
   return !!req.headers.upgrade && req.headers.upgrade.toLowerCase() === WEBSOCKET_UPGRADE_HEADER;
-}
-
-export abstract class ProxyTemplate {
-  protected _proxyService: ProxyService;
-
-  constructor(proxyService: ProxyService) {
-    this._proxyService = proxyService;
-  }
 }
